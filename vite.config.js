@@ -5,5 +5,5 @@ import react from '@vitejs/plugin-react';
 // (sirva desde la raíz o desde /nombre-del-repo/) sin tener que tocar nada.
 export default defineConfig({
   plugins: [react()],
-  base: './',
+  base: '/panel-control-pwa/',
 });
