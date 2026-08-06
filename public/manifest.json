@@ -1,0 +1,14 @@
+{
+  "name": "Panel de Control",
+  "short_name": "Panel",
+  "description": "Centro de control personal — privado y local",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0A0F14",
+  "theme_color": "#0A0F14",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

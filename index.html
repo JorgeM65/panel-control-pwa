@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0A0F14" />
+    <meta name="description" content="Panel de control personal — privado y local" />
+
+    <!--
+      Política de seguridad de contenido:
+      - script-src 'self'      -> solo se ejecuta el código que compilamos nosotros, nada de scripts externos ni eval.
+      - style-src incluye Google Fonts (la app carga la tipografía JetBrains Mono/Space Grotesk/Work Sans desde ahí).
+      - img-src incluye TMDB (pósters de películas).
+      - connect-src limita las llamadas fetch() solo a las dos APIs que usa la app (TheSportsDB y TMDB).
+      - frame-ancestors 'none' evita que la app se pueda incrustar en un iframe de otra web.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://image.tmdb.org data:; connect-src 'self' https://www.thesportsdb.com https://api.themoviedb.org; base-uri 'self'; form-action 'self'; frame-ancestors 'none';"
+    />
+
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <title>Panel de Control</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
