@@ -1,4 +1,4 @@
-const CACHE_NAME = 'panel-control-v1';
+const CACHE_NAME = 'panel-control-v2';
 const APP_SHELL = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -20,14 +20,32 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Solo cacheamos peticiones GET a nuestro propio origen (el cascarón de la app).
-  // Las llamadas a TheSportsDB y TMDB van siempre directas a la red: son datos
-  // que cambian (partidos, estrenos) y cachearlos mostraría información vieja.
   if (event.request.method !== 'GET' || url.origin !== self.location.origin) {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
-  );
+  const isHashedAsset = url.pathname.includes('/assets/');
+
+  if (isHashedAsset) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((res) => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return res;
+        });
+      })
+    );
+  } else {
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(event.request))
+    );
+  }
 });
