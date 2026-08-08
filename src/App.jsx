@@ -162,12 +162,20 @@ const Notificaciones = {
   },
   async mostrarAhora(title, body) {
     const ok = await this.solicitarPermiso();
-    if (!ok) return false;
+    if (!ok) return { ok: false, reason: 'permiso' };
     try {
+      // Chrome en Android exige mostrar la notificación a través del service
+      // worker cuando la página tiene uno activo (nuestro caso, al ser PWA);
+      // el constructor `new Notification()` directo falla ahí en silencio.
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.showNotification(title, { body, icon: './icon.svg' });
+        return { ok: true };
+      }
       new Notification(title, { body, icon: './icon.svg' });
-      return true;
+      return { ok: true };
     } catch (e) {
-      return false;
+      return { ok: false, reason: 'error', detail: String((e && e.message) || e) };
     }
   },
   async programar() { return false; },
@@ -1118,15 +1126,21 @@ function AjustesTab({
   const futbol = entertainment.futbol;
   const estrenos = entertainment.estrenos;
 
+  function describeResult(result) {
+    if (result.ok) return 'Aviso enviado — revisa las notificaciones del sistema.';
+    if (result.reason === 'permiso') return 'No tienes el permiso de notificaciones concedido en el navegador.';
+    return `No se pudo mostrar el aviso (${result.detail || 'error desconocido'}).`;
+  }
+
   async function testMorning() {
     const s = buildMorningSummary(tasks, events, footballMatches, futbol.teams);
-    const ok = await Notificaciones.mostrarAhora(s.title, s.body);
-    setTestMsg(ok ? 'Aviso enviado — revisa las notificaciones del sistema.' : 'Necesitas dar permiso de notificaciones en el navegador.');
+    const result = await Notificaciones.mostrarAhora(s.title, s.body);
+    setTestMsg(describeResult(result));
   }
   async function testEvening() {
     const s = buildEveningSummary(tasks, habits);
-    const ok = await Notificaciones.mostrarAhora(s.title, s.body);
-    setTestMsg(ok ? 'Aviso enviado — revisa las notificaciones del sistema.' : 'Necesitas dar permiso de notificaciones en el navegador.');
+    const result = await Notificaciones.mostrarAhora(s.title, s.body);
+    setTestMsg(describeResult(result));
   }
 
   function toggleLeague(id) {
