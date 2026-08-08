@@ -84,6 +84,19 @@ function dateKey(date) {
   return `${y}-${m}-${d}`;
 }
 
+// TheSportsDB devuelve dateEvent/strTime en UTC. Los convertimos a hora local
+// del dispositivo — y ojo, la FECHA también puede cambiar (un partido a las
+// 23:30 UTC puede caer ya en el día siguiente en España).
+function utcToLocal(dateEvent, strTime) {
+  if (!strTime) return { time: '', date: dateEvent };
+  const utcDate = new Date(`${dateEvent}T${strTime}Z`);
+  if (isNaN(utcDate.getTime())) return { time: strTime.slice(0, 5), date: dateEvent };
+  return {
+    time: utcDate.toTimeString().slice(0, 5),
+    date: dateKey(utcDate),
+  };
+}
+
 function formatFullDate(dk) {
   const [y, m, d] = dk.split('-').map(Number);
   const dateObj = new Date(y, m - 1, d);
@@ -212,8 +225,15 @@ const styles = `
 
 * { box-sizing: border-box; }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg);
+}
+
 .app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--bg);
   background-image:
     linear-gradient(rgba(77,217,206,0.045) 1px, transparent 1px),
@@ -2339,26 +2359,30 @@ export default function App() {
           const url = `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${todayKey}&l=${encodeURIComponent(liga.apiName)}`;
           const res = await fetch(url);
           const data = await res.json();
-          (data.events || []).forEach(ev => results.push({
-            id: ev.idEvent, home: ev.strHomeTeam, away: ev.strAwayTeam,
-            homeScore: ev.intHomeScore, awayScore: ev.intAwayScore,
-            time: ev.strTime ? ev.strTime.slice(0, 5) : '', competition: liga.name, date: ev.dateEvent,
-          }));
+          (data.events || []).forEach(ev => {
+            const { time, date } = utcToLocal(ev.dateEvent, ev.strTime);
+            if (date !== todayKey) return;
+            results.push({
+              id: ev.idEvent, home: ev.strHomeTeam, away: ev.strAwayTeam,
+              homeScore: ev.intHomeScore, awayScore: ev.intAwayScore,
+              time, competition: liga.name, date,
+            });
+          });
         }
         for (const team of teams) {
           const url = `https://www.thesportsdb.com/api/v1/json/123/eventsnext.php?id=${team.id}`;
           const res = await fetch(url);
           const data = await res.json();
-          (data.events || [])
-            .filter(ev => ev.dateEvent === todayKey)
-            .forEach(ev => {
-              if (results.some(r => r.id === ev.idEvent)) return;
-              results.push({
-                id: ev.idEvent, home: ev.strHomeTeam, away: ev.strAwayTeam,
-                homeScore: ev.intHomeScore, awayScore: ev.intAwayScore,
-                time: ev.strTime ? ev.strTime.slice(0, 5) : '', competition: ev.strLeague, date: ev.dateEvent,
-              });
+          (data.events || []).forEach(ev => {
+            const { time, date } = utcToLocal(ev.dateEvent, ev.strTime);
+            if (date !== todayKey) return;
+            if (results.some(r => r.id === ev.idEvent)) return;
+            results.push({
+              id: ev.idEvent, home: ev.strHomeTeam, away: ev.strAwayTeam,
+              homeScore: ev.intHomeScore, awayScore: ev.intAwayScore,
+              time, competition: ev.strLeague, date,
             });
+          });
         }
         results.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
         if (!cancelled) {
