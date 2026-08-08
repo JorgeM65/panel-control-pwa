@@ -1024,6 +1024,7 @@ function EstrenosSection({ config, onNavigate }) {
   const [sub, setSub] = useState('cine');
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState('idle');
+  const [errorDetail, setErrorDetail] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -1034,22 +1035,40 @@ function EstrenosSection({ config, onNavigate }) {
       }
       setStatus('loading');
       try {
+        // TMDB tiene dos tipos de credencial: la clave v3 (una cadena corta)
+        // y el "API Read Access Token" v4 (un JWT largo con puntos, tipo
+        // eyJ...). Cada una se envía de forma distinta — si no acertamos
+        // cuál es, TMDB devuelve un 401 aunque la clave sea correcta.
+        const isV4Token = config.apiKey.includes('.');
+        const headers = isV4Token ? { Authorization: `Bearer ${config.apiKey}` } : {};
+        const keyParam = isV4Token ? '' : `&api_key=${config.apiKey}`;
+
         let url;
         if (sub === 'cine') {
-          url = `https://api.themoviedb.org/3/movie/now_playing?api_key=${config.apiKey}&region=ES&language=es-ES&page=1`;
+          url = `https://api.themoviedb.org/3/movie/now_playing?region=ES&language=es-ES&page=1${keyParam}`;
         } else {
           const providers = config.providers.length > 0 ? config.providers.join('|') : PLATAFORMAS.map(p => p.id).join('|');
-          url = `https://api.themoviedb.org/3/discover/movie?api_key=${config.apiKey}&watch_region=ES&with_watch_providers=${providers}&sort_by=primary_release_date.desc&language=es-ES&page=1`;
+          const today = dateKey(new Date());
+          // primary_release_date.lte evita mostrar películas con fecha de
+          // estreno futura (que aún no están realmente disponibles), y
+          // watch_monetization_types=flatrate se ciñe a lo incluido en la
+          // suscripción, sin mezclar alquiler o compra.
+          url = `https://api.themoviedb.org/3/discover/movie?watch_region=ES&with_watch_providers=${providers}&watch_monetization_types=flatrate&sort_by=primary_release_date.desc&primary_release_date.lte=${today}&language=es-ES&page=1${keyParam}`;
         }
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('bad response');
+        const res = await fetch(url, { headers });
         const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.status_message || `error ${res.status}`);
+        }
         if (!cancelled) {
           setItems((data.results || []).slice(0, 12));
           setStatus('ok');
         }
       } catch (e) {
-        if (!cancelled) setStatus('error');
+        if (!cancelled) {
+          setErrorDetail(String((e && e.message) || e));
+          setStatus('error');
+        }
       }
     }
     fetchData();
@@ -1073,7 +1092,7 @@ function EstrenosSection({ config, onNavigate }) {
       ) : status === 'loading' ? (
         <div className="empty-state">Cargando estrenos…</div>
       ) : status === 'error' ? (
-        <div className="empty-state">No se ha podido conectar con TMDB. Revisa tu clave.</div>
+        <div className="empty-state">No se ha podido conectar con TMDB{errorDetail ? `: ${errorDetail}` : '.'}</div>
       ) : items.length === 0 ? (
         <div className="empty-state">No hay resultados por ahora.</div>
       ) : (
@@ -1498,6 +1517,16 @@ function HabitosTab({ habits, onChange, onDelete }) {
 function CompraTab({ items, onChange, onClearAll }) {
   const [text, setText] = useState('');
   const [checking, setChecking] = useState([]);
+  const itemsRef = useRef(items);
+  const timeoutsRef = useRef([]);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => () => {
+    timeoutsRef.current.forEach(t => clearTimeout(t));
+  }, []);
 
   function addItem() {
     const trimmed = text.trim();
@@ -1508,10 +1537,11 @@ function CompraTab({ items, onChange, onClearAll }) {
 
   function checkItem(id) {
     setChecking(c => [...c, id]);
-    setTimeout(() => {
-      onChange(items.filter(i => i.id !== id));
+    const t = setTimeout(() => {
+      onChange(itemsRef.current.filter(i => i.id !== id));
       setChecking(c => c.filter(x => x !== id));
     }, 450);
+    timeoutsRef.current.push(t);
   }
 
   function clearAll() {
@@ -1954,7 +1984,6 @@ function NotasTab({ notas, onChange, onDelete }) {
     <div className="module-panel">
       <div className="add-row">
         <textarea
-          ref={textareaRef}
           className="text-input"
           placeholder="Escribe una nota…"
           value={text}
@@ -2138,7 +2167,15 @@ function RuletaTab({ items, onChange, onDelete }) {
               <li key={it.id} className="wheel-list-item">
                 <span className="wheel-swatch" style={{ background: RULETA_COLORS[i % RULETA_COLORS.length] }} />
                 <span className="wheel-list-text">{it.text}</span>
-                <button type="button" className="remove-btn" onClick={() => removeItem(it.id)} aria-label="Quitar opción">×</button>
+                <button
+                  type="button"
+                  className="remove-btn"
+                  onClick={() => removeItem(it.id)}
+                  disabled={spinning}
+                  aria-label="Quitar opción"
+                >
+                  ×
+                </button>
               </li>
             ))}
           </ul>
