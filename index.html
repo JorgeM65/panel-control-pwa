@@ -11,12 +11,12 @@
       - script-src 'self'      -> solo se ejecuta el código que compilamos nosotros, nada de scripts externos ni eval.
       - style-src incluye Google Fonts (la app carga la tipografía JetBrains Mono/Space Grotesk/Work Sans desde ahí).
       - img-src incluye TMDB (pósters de películas).
-      - connect-src limita las llamadas fetch() solo a las dos APIs que usa la app (TheSportsDB y TMDB).
+      - connect-src limita las llamadas fetch() solo a las APIs que usa la app (TheSportsDB, TMDB y Open-Meteo).
       - frame-ancestors 'none' evita que la app se pueda incrustar en un iframe de otra web.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://image.tmdb.org data:; connect-src 'self' https://www.thesportsdb.com https://api.themoviedb.org; base-uri 'self'; form-action 'self'; frame-ancestors 'none';"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://image.tmdb.org data:; connect-src 'self' https://www.thesportsdb.com https://api.themoviedb.org https://api.open-meteo.com https://geocoding-api.open-meteo.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none';"
     />
 
     <link rel="manifest" href="./manifest.json" />
