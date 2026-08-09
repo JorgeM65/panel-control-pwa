@@ -36,8 +36,10 @@ const NAV_ITEMS = [
   { key: 'habitos', label: 'Hábitos', icon: '🔥' },
   { key: 'compra', label: 'Compra', icon: '🛒' },
   { key: 'capsula', label: 'Cápsula', icon: '⏳' },
+  { key: 'fechas', label: 'Fechas', icon: '🎂' },
   { key: 'notas', label: 'Notas', icon: '📝' },
   { key: 'ruleta', label: 'Ruleta', icon: '🎡' },
+  { key: 'predicciones', label: 'Predicciones', icon: '🔮' },
   { key: 'datos', label: 'Datos', icon: '📊' },
   { key: 'juego', label: 'Juego', icon: '🎮' },
   { key: 'tiempo', label: 'Tiempo', icon: '🌤️' },
@@ -115,14 +117,47 @@ function daysUntil(dk) {
   return Math.ceil((target - new Date(new Date().toDateString())) / 86400000);
 }
 
-function buildMorningSummary(tasks, events, footballMatches, footballTeams) {
+// Para una fecha importante (cumpleaños, aniversario...) guardada como
+// 'YYYY-MM-DD', calcula la próxima vez que cae ese mismo día-mes a partir
+// de hoy (este año si no ha pasado ya, si no el que viene).
+function nextOccurrence(fecha) {
+  const [, m, d] = fecha.split('-').map(Number);
+  const todayKey = dateKey(new Date());
+  let year = new Date().getFullYear();
+  let candidate = `${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  if (candidate < todayKey) {
+    year += 1;
+    candidate = `${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+  return candidate;
+}
+
+function yearsFor(fecha, next) {
+  const [y] = fecha.split('-').map(Number);
+  const [ny] = next.split('-').map(Number);
+  const diff = ny - y;
+  return diff > 0 ? diff : null;
+}
+
+function calcPredictionPoints(predHome, predAway, actualHome, actualAway) {
+  if (predHome === actualHome && predAway === actualAway) return 3;
+  const predOutcome = predHome > predAway ? 'home' : predHome < predAway ? 'away' : 'draw';
+  const actualOutcome = actualHome > actualAway ? 'home' : actualHome < actualAway ? 'away' : 'draw';
+  return predOutcome === actualOutcome ? 1 : 0;
+}
+
+function buildMorningSummary(tasks, events, footballMatches, footballTeams, fechas) {
   const todayKey = dateKey(new Date());
   const urgentPending = tasks.filter(t => !t.done && t.priority === 'alta');
   const todayEvents = eventsOnDate(events, todayKey);
   const teamNames = footballTeams.map(t => t.name);
   const teamMatches = footballMatches.filter(m => teamNames.includes(m.home) || teamNames.includes(m.away));
+  const todayFechas = (fechas || []).filter(f => nextOccurrence(f.fecha) === todayKey);
 
   const parts = [];
+  if (todayFechas.length > 0) {
+    parts.push(`🎂 ${todayFechas.map(f => f.nombre).join(', ')}`);
+  }
   if (urgentPending.length > 0) {
     parts.push(`${urgentPending.length} urgente${urgentPending.length === 1 ? '' : 's'}: ${urgentPending.slice(0, 3).map(t => t.text).join(', ')}`);
   }
@@ -648,6 +683,18 @@ textarea.text-input { resize: none; min-height: 46px; font-family: var(--font-bo
 .wheel-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 .wheel-list-text { flex: 1; font-size: 13.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+.fecha-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.fecha-item { display: flex; align-items: center; gap: 10px; background: var(--item-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.fecha-item.today { border-color: var(--cyan); border-width: 2px; }
+.fecha-icon { font-size: 18px; flex-shrink: 0; }
+.fecha-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fecha-nombre { font-size: 14px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fecha-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+
+.pred-row { gap: 6px; }
+.pred-result-row { align-items: flex-start; }
+.pred-result-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+
 .game-wrap { position: relative; width: 100%; max-width: 300px; margin: 0 auto; }
 .game-canvas { width: 100%; height: auto; display: block; border-radius: 10px; border: 1px solid var(--border); touch-action: none; }
 .game-overlay {
@@ -1131,7 +1178,7 @@ function EntretenimientoTab({ data, matches, matchesStatus, onNavigate }) {
 
 function AjustesTab({
   entertainment, onChangeEntertainment, tiempo, onChangeTiempo,
-  notificaciones, onChangeNotificaciones, tasks, events, habits, footballMatches,
+  notificaciones, onChangeNotificaciones, tasks, events, habits, footballMatches, fechas,
 }) {
   const [teamQuery, setTeamQuery] = useState('');
   const [teamResults, setTeamResults] = useState([]);
@@ -1152,7 +1199,7 @@ function AjustesTab({
   }
 
   async function testMorning() {
-    const s = buildMorningSummary(tasks, events, footballMatches, futbol.teams);
+    const s = buildMorningSummary(tasks, events, footballMatches, futbol.teams, fechas);
     const result = await Notificaciones.mostrarAhora(s.title, s.body);
     setTestMsg(describeResult(result));
   }
@@ -2185,7 +2232,225 @@ function RuletaTab({ items, onChange, onDelete }) {
   );
 }
 
-function Home({ tasks, events, habits, compra, capsulas, footballMatches, footballConfig, weatherData, onNavigate, onCompleteTask, onToggleHabit }) {
+function FechasTab({ fechas, onChange, onDelete }) {
+  const [nombre, setNombre] = useState('');
+  const [fecha, setFecha] = useState('');
+  const [tipo, setTipo] = useState('cumpleanos');
+
+  const TIPO_LABEL = { cumpleanos: 'Cumpleaños', aniversario: 'Aniversario', otro: 'Otro' };
+  const TIPO_ICON = { cumpleanos: '🎂', aniversario: '💫', otro: '📌' };
+
+  function addFecha() {
+    const trimmed = nombre.trim();
+    if (!trimmed || !fecha) return;
+    onChange([...fechas, { id: uid(), nombre: trimmed, fecha, tipo }]);
+    setNombre('');
+    setFecha('');
+  }
+
+  function removeFecha(id) {
+    onDelete(id);
+  }
+
+  const withDays = fechas
+    .map(f => {
+      const next = nextOccurrence(f.fecha);
+      return { ...f, next, days: daysUntil(next), years: yearsFor(f.fecha, next) };
+    })
+    .sort((a, b) => a.days - b.days);
+
+  return (
+    <div className="module-panel">
+      <div className="config-panel">
+        <input className="text-input" placeholder="Nombre…" value={nombre} onChange={e => setNombre(e.target.value)} />
+        <input className="text-input" type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
+        <div className="chip-row">
+          {Object.entries(TIPO_LABEL).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className={`toggle-chip ${tipo === key ? 'active' : ''}`}
+              onClick={() => setTipo(key)}
+            >
+              {TIPO_ICON[key]} {label}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="primary-btn" onClick={addFecha}>Añadir fecha</button>
+      </div>
+
+      {withDays.length === 0 ? (
+        <div className="empty-state">Añade cumpleaños o aniversarios para no olvidarlos.</div>
+      ) : (
+        <ul className="fecha-list">
+          {withDays.map(f => (
+            <li key={f.id} className={`fecha-item ${f.days === 0 ? 'today' : ''}`}>
+              <span className="fecha-icon">{TIPO_ICON[f.tipo]}</span>
+              <div className="fecha-info">
+                <span className="fecha-nombre">{f.nombre}</span>
+                <span className="fecha-meta">
+                  {f.days === 0 ? '¡Hoy!' : f.days === 1 ? 'Mañana' : `En ${f.days} días`}
+                  {f.years !== null ? ` · ${f.years} años` : ''}
+                </span>
+              </div>
+              <button type="button" className="remove-btn" onClick={() => removeFecha(f.id)} aria-label="Eliminar fecha">×</button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function PrediccionesTab({ predicciones, footballMatches, onChange, onDelete }) {
+  const [drafts, setDrafts] = useState({});
+  const [resolving, setResolving] = useState(false);
+  const resolvedOnceRef = useRef(false);
+
+  const todayKey = dateKey(new Date());
+  const predictedIds = new Set(predicciones.map(p => p.matchId));
+  const todayMatches = footballMatches.filter(m => !predictedIds.has(m.id));
+
+  function setDraft(matchId, field, value) {
+    setDrafts(d => ({ ...d, [matchId]: { ...d[matchId], [field]: value.replace(/\D/g, '') } }));
+  }
+
+  function savePrediction(match) {
+    const draft = drafts[match.id];
+    if (!draft || draft.home === '' || draft.away === undefined || draft.away === '') return;
+    onChange([...predicciones, {
+      id: uid(),
+      matchId: match.id,
+      home: match.home,
+      away: match.away,
+      competition: match.competition,
+      date: match.date,
+      predHome: Number(draft.home),
+      predAway: Number(draft.away),
+      resolved: false,
+      actualHome: null,
+      actualAway: null,
+      points: null,
+    }]);
+    setDrafts(d => {
+      const next = { ...d };
+      delete next[match.id];
+      return next;
+    });
+  }
+
+  function removePrediction(id) {
+    onDelete(id);
+  }
+
+  useEffect(() => {
+    if (resolvedOnceRef.current) return;
+    resolvedOnceRef.current = true;
+    async function resolvePending() {
+      const pending = predicciones.filter(p => !p.resolved && p.date < todayKey);
+      if (pending.length === 0) return;
+      setResolving(true);
+      const updated = [...predicciones];
+      for (const p of pending) {
+        try {
+          const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/lookupevent.php?id=${p.matchId}`);
+          const data = await res.json();
+          const ev = data.events && data.events[0];
+          if (ev && ev.intHomeScore !== null && ev.intHomeScore !== undefined) {
+            const actualHome = Number(ev.intHomeScore);
+            const actualAway = Number(ev.intAwayScore);
+            const points = calcPredictionPoints(p.predHome, p.predAway, actualHome, actualAway);
+            const idx = updated.findIndex(u => u.id === p.id);
+            if (idx !== -1) updated[idx] = { ...p, resolved: true, actualHome, actualAway, points };
+          }
+        } catch (e) { /* se reintenta la próxima vez que se abra */ }
+      }
+      onChange(updated);
+      setResolving(false);
+    }
+    resolvePending();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const resolved = predicciones.filter(p => p.resolved);
+  const totalPoints = resolved.reduce((sum, p) => sum + (p.points || 0), 0);
+  const exactCount = resolved.filter(p => p.points === 3).length;
+  const outcomeCount = resolved.filter(p => p.points === 1).length;
+  const accuracy = resolved.length === 0 ? 0 : Math.round(((exactCount + outcomeCount) / resolved.length) * 100);
+
+  const sortedPredicciones = [...predicciones].sort((a, b) => b.date.localeCompare(a.date));
+
+  return (
+    <div className="module-panel">
+      <div className="stat-grid">
+        <div className="stat-box tech-frame">
+          <span className="stat-value">{totalPoints}</span>
+          <span className="stat-label">Puntos</span>
+        </div>
+        <div className="stat-box tech-frame">
+          <span className="stat-value">{exactCount}</span>
+          <span className="stat-label">Marcador exacto</span>
+        </div>
+        <div className="stat-box tech-frame">
+          <span className="stat-value">{accuracy}%</span>
+          <span className="stat-label">Acierto</span>
+        </div>
+      </div>
+
+      {todayMatches.length > 0 && (
+        <div className="dash-section">
+          <span className="section-label">Partidos de hoy sin predicción</span>
+          <ul className="wheel-list">
+            {todayMatches.map(m => (
+              <li key={m.id} className="wheel-list-item pred-row">
+                <span className="wheel-list-text">{m.home} - {m.away}</span>
+                <input
+                  className="text-input tiny"
+                  inputMode="numeric"
+                  value={drafts[m.id]?.home || ''}
+                  onChange={e => setDraft(m.id, 'home', e.target.value)}
+                />
+                <span className="score-sep">–</span>
+                <input
+                  className="text-input tiny"
+                  inputMode="numeric"
+                  value={drafts[m.id]?.away || ''}
+                  onChange={e => setDraft(m.id, 'away', e.target.value)}
+                />
+                <button type="button" className="add-btn" onClick={() => savePrediction(m)}>✓</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="dash-section">
+        <span className="section-label">Tus predicciones{resolving ? ' · comprobando…' : ''}</span>
+        {predicciones.length === 0 ? (
+          <div className="empty-state">Configura ligas o equipos favoritos en Ajustes y predice tus primeros marcadores.</div>
+        ) : (
+          <ul className="wheel-list">
+            {sortedPredicciones.map(p => (
+              <li key={p.id} className="wheel-list-item pred-result-row">
+                <div className="pred-result-info">
+                  <span className="wheel-list-text">{p.home} {p.predHome}-{p.predAway} {p.away}</span>
+                  <span className="fecha-meta">
+                    {p.resolved
+                      ? `Final ${p.actualHome}-${p.actualAway} · ${p.points === 3 ? '🎯 exacto (+3)' : p.points === 1 ? '✓ resultado (+1)' : '✗ fallo'}`
+                      : 'Pendiente de jugarse'}
+                  </span>
+                </div>
+                <button type="button" className="remove-btn" onClick={() => removePrediction(p.id)} aria-label="Eliminar predicción">×</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Home({ tasks, events, habits, compra, capsulas, footballMatches, footballConfig, weatherData, fechas, onNavigate, onCompleteTask, onToggleHabit }) {
   const todayKey = dateKey(new Date());
   const order = { alta: 0, media: 1, baja: 2 };
 
@@ -2200,11 +2465,13 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
   const habitsPending = habits.filter(h => !h.dates.includes(todayKey));
 
   const readyCapsule = capsulas.find(c => !c.opened && c.openDate <= todayKey);
+  const todayFechas = (fechas || []).filter(f => nextOccurrence(f.fecha) === todayKey);
 
   const futbolConfigured = footballConfig.leagues.length > 0 || footballConfig.teams.length > 0;
 
-  const ICON = { event: '📅', match: '⚽', capsule: '⏳', habit: '🔥' };
+  const ICON = { event: '📅', match: '⚽', capsule: '⏳', habit: '🔥', fecha: '🎂' };
   const dayEntries = [];
+  todayFechas.forEach(f => dayEntries.push({ type: 'fecha', key: `f-${f.id}`, time: '', label: f.nombre }));
   todayEvents.forEach(ev => dayEntries.push({ type: 'event', key: `ev-${ev.id}`, time: ev.time, label: ev.title }));
   footballMatches.forEach(m => dayEntries.push({ type: 'match', key: `m-${m.id}`, time: m.time, label: `${m.home} - ${m.away}` }));
   if (readyCapsule) dayEntries.push({ type: 'capsule', key: 'cap', time: '', label: 'Cápsula lista para abrir' });
@@ -2215,6 +2482,7 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
     if (type === 'event') onNavigate('calendario');
     else if (type === 'match') onNavigate('entretenimiento');
     else if (type === 'capsule') onNavigate('capsula');
+    else if (type === 'fecha') onNavigate('fechas');
     else onNavigate('habitos');
   }
 
@@ -2338,6 +2606,8 @@ export default function App() {
   const [tiempo, setTiempo] = useState(DEFAULT_TIEMPO);
   const [ruleta, setRuleta] = useState([]);
   const [notificaciones, setNotificaciones] = useState(DEFAULT_NOTIFICACIONES);
+  const [fechas, setFechas] = useState([]);
+  const [predicciones, setPredicciones] = useState([]);
   const [weatherData, setWeatherData] = useState(null);
   const [weatherStatus, setWeatherStatus] = useState('idle');
   const [toast, setToast] = useState(null);
@@ -2362,7 +2632,7 @@ export default function App() {
       }
     }
     (async () => {
-      const [t, e, ent, h, c, cap, n, tm, r, notif] = await Promise.all([
+      const [t, e, ent, h, c, cap, n, tm, r, notif, fch, pred] = await Promise.all([
         load('tareas', []),
         load('calendario', []),
         load('entretenimiento', null),
@@ -2373,6 +2643,8 @@ export default function App() {
         load('tiempo', null),
         load('ruleta', []),
         load('notificaciones', null),
+        load('fechas', []),
+        load('predicciones', []),
       ]);
       if (!cancelled) {
         setTasks(t);
@@ -2385,6 +2657,8 @@ export default function App() {
         setTiempo(tm && typeof tm.lat !== 'undefined' ? tm : DEFAULT_TIEMPO);
         setRuleta(r);
         setNotificaciones(notif && notif.manana ? notif : DEFAULT_NOTIFICACIONES);
+        setFechas(fch);
+        setPredicciones(pred);
         setLoaded(true);
       }
     })();
@@ -2506,6 +2780,8 @@ export default function App() {
   function updateNotas(next) { setNotas(next); persist('notas', next); }
   function updateTiempo(next) { setTiempo(next); persist('tiempo', next); }
   function updateRuleta(next) { setRuleta(next); persist('ruleta', next); }
+  function updateFechas(next) { setFechas(next); persist('fechas', next); }
+  function updatePredicciones(next) { setPredicciones(next); persist('predicciones', next); }
 
   function deleteTask(id) {
     const prev = tasks;
@@ -2542,6 +2818,17 @@ export default function App() {
     updateRuleta(ruleta.filter(r => r.id !== id));
     showToast('Opción eliminada', { label: 'Deshacer', onClick: () => updateRuleta(prev) });
   }
+  function deleteFecha(id) {
+    const prev = fechas;
+    updateFechas(fechas.filter(f => f.id !== id));
+    showToast('Fecha eliminada', { label: 'Deshacer', onClick: () => updateFechas(prev) });
+  }
+  function deletePrediccion(id) {
+    const prev = predicciones;
+    updatePredicciones(predicciones.filter(p => p.id !== id));
+    showToast('Predicción eliminada', { label: 'Deshacer', onClick: () => updatePredicciones(prev) });
+  }
+
 
   function completeTaskFromHome(id) {
     updateTasks(tasks.map(t => (t.id === id ? { ...t, done: true } : t)));
@@ -2619,6 +2906,7 @@ export default function App() {
             capsulas={capsulas}
             footballMatches={footballMatches}
             footballConfig={entertainment.futbol}
+            fechas={fechas}
             weatherData={weatherData}
             onNavigate={setActiveView}
             onCompleteTask={completeTaskFromHome}
@@ -2633,10 +2921,19 @@ export default function App() {
         {activeView === 'habitos' && <HabitosTab habits={habits} onChange={updateHabits} onDelete={deleteHabit} />}
         {activeView === 'compra' && <CompraTab items={compra} onChange={updateCompra} onClearAll={clearCompra} />}
         {activeView === 'capsula' && <CapsulaTab capsules={capsulas} onChange={updateCapsulas} onDelete={deleteCapsula} />}
+        {activeView === 'fechas' && <FechasTab fechas={fechas} onChange={updateFechas} onDelete={deleteFecha} />}
         {activeView === 'datos' && <DatosTab tasks={tasks} habits={habits} capsulas={capsulas} />}
         {activeView === 'juego' && <JuegoTab />}
         {activeView === 'notas' && <NotasTab notas={notas} onChange={updateNotas} onDelete={deleteNota} />}
         {activeView === 'ruleta' && <RuletaTab items={ruleta} onChange={updateRuleta} onDelete={deleteRuletaOption} />}
+        {activeView === 'predicciones' && (
+          <PrediccionesTab
+            predicciones={predicciones}
+            footballMatches={footballMatches}
+            onChange={updatePredicciones}
+            onDelete={deletePrediccion}
+          />
+        )}
         {activeView === 'tiempo' && <TiempoTab tiempo={tiempo} data={weatherData} status={weatherStatus} onNavigate={setActiveView} />}
         {activeView === 'ajustes' && (
           <AjustesTab
@@ -2650,6 +2947,7 @@ export default function App() {
             events={events}
             habits={habits}
             footballMatches={footballMatches}
+            fechas={fechas}
           />
         )}
       </main>
