@@ -32,19 +32,24 @@ const PLATAFORMAS = [
 const NAV_ITEMS = [
   { key: 'tareas', label: 'Tareas', icon: '✓' },
   { key: 'calendario', label: 'Calendario', icon: '📅' },
-  { key: 'entretenimiento', label: 'Entretenimiento', icon: '🎬' },
   { key: 'habitos', label: 'Hábitos', icon: '🔥' },
   { key: 'compra', label: 'Compra', icon: '🛒' },
-  { key: 'capsula', label: 'Cápsula', icon: '⏳' },
-  { key: 'fechas', label: 'Fechas', icon: '🎂' },
   { key: 'notas', label: 'Notas', icon: '📝' },
+  { key: 'fechas', label: 'Fechas', icon: '🎂' },
+  { key: 'futbol', label: 'Fútbol', icon: '⚽' },
+  { key: 'estrenos', label: 'Estrenos', icon: '🎬' },
+  { key: 'capsula', label: 'Cápsula', icon: '⏳' },
   { key: 'ruleta', label: 'Ruleta', icon: '🎡' },
-  { key: 'predicciones', label: 'Predicciones', icon: '🔮' },
-  { key: 'estadisticas', label: 'Estadísticas', icon: '📈' },
-  { key: 'datos', label: 'Datos', icon: '📊' },
-  { key: 'juego', label: 'Juego', icon: '🎮' },
   { key: 'tiempo', label: 'Tiempo', icon: '🌤️' },
+  { key: 'juego', label: 'Juego', icon: '🎮' },
+  { key: 'datos', label: 'Datos', icon: '📊' },
   { key: 'ajustes', label: 'Ajustes', icon: '⚙' },
+];
+
+const NAV_GROUPS = [
+  { label: 'Productividad', items: ['tareas', 'calendario', 'habitos', 'compra', 'notas', 'fechas'] },
+  { label: 'Fútbol y ocio', items: ['futbol', 'estrenos', 'capsula', 'ruleta', 'tiempo', 'juego'] },
+  { label: 'Sistema', items: ['datos', 'ajustes'] },
 ];
 
 const RULETA_COLORS = ['#4DD9CE', '#E3AC4C', '#E2637A', '#58D398', '#9C93E8'];
@@ -416,6 +421,12 @@ html, body {
 .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 0 18px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
 .drawer-close { background: none; border: none; color: var(--text); font-size: 20px; cursor: pointer; }
 .drawer-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+.drawer-group { margin-bottom: 4px; }
+.drawer-group-label {
+  display: block; padding: 12px 18px 4px; font-family: var(--font-mono); font-size: 9.5px;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); opacity: 0.65;
+}
+.drawer-group-list { list-style: none; margin: 0; padding: 0; }
 .drawer-item {
   width: 100%; text-align: left; display: flex; align-items: center; gap: 12px;
   background: none; border: none; padding: 13px 18px; font-family: var(--font-body); font-size: 14.5px;
@@ -1176,17 +1187,35 @@ function EstrenosSection({ config, onNavigate }) {
   );
 }
 
-function EntretenimientoTab({ data, matches, matchesStatus, onNavigate }) {
-  const [sub, setSub] = useState('futbol');
+function FutbolTab({ data, matches, matchesStatus, predicciones, onChangePredicciones, onDeletePrediccion, onNavigate }) {
+  const [sub, setSub] = useState('partidos');
   return (
     <div className="module-panel">
       <div className="sub-tabs">
-        <button type="button" className={`sub-tab ${sub === 'futbol' ? 'active' : ''}`} onClick={() => setSub('futbol')}>Fútbol</button>
-        <button type="button" className={`sub-tab ${sub === 'estrenos' ? 'active' : ''}`} onClick={() => setSub('estrenos')}>Estrenos</button>
+        <button type="button" className={`sub-tab ${sub === 'partidos' ? 'active' : ''}`} onClick={() => setSub('partidos')}>Partidos</button>
+        <button type="button" className={`sub-tab ${sub === 'predicciones' ? 'active' : ''}`} onClick={() => setSub('predicciones')}>Predicciones</button>
+        <button type="button" className={`sub-tab ${sub === 'estadisticas' ? 'active' : ''}`} onClick={() => setSub('estadisticas')}>Estadísticas</button>
       </div>
-      {sub === 'futbol'
-        ? <FutbolSection config={data.futbol} matches={matches} status={matchesStatus} onNavigate={onNavigate} />
-        : <EstrenosSection config={data.estrenos} onNavigate={onNavigate} />}
+      {sub === 'partidos' && (
+        <FutbolSection config={data.futbol} matches={matches} status={matchesStatus} onNavigate={onNavigate} />
+      )}
+      {sub === 'predicciones' && (
+        <PrediccionesTab
+          predicciones={predicciones}
+          footballMatches={matches}
+          onChange={onChangePredicciones}
+          onDelete={onDeletePrediccion}
+        />
+      )}
+      {sub === 'estadisticas' && <EstadisticasTab futbolConfig={data.futbol} />}
+    </div>
+  );
+}
+
+function EstrenosTab({ config, onNavigate }) {
+  return (
+    <div className="module-panel">
+      <EstrenosSection config={config} onNavigate={onNavigate} />
     </div>
   );
 }
@@ -2642,7 +2671,7 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
 
   function goTo(type) {
     if (type === 'event') onNavigate('calendario');
-    else if (type === 'match') onNavigate('entretenimiento');
+    else if (type === 'match') onNavigate('futbol');
     else if (type === 'capsule') onNavigate('capsula');
     else if (type === 'fecha') onNavigate('fechas');
     else onNavigate('habitos');
@@ -2733,7 +2762,7 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
       <div className="dash-section">
         <span className="section-label">Accesos rápidos</span>
         <div className="quick-row">
-          <button type="button" className="quick-chip" onClick={() => onNavigate('entretenimiento')}>
+          <button type="button" className="quick-chip" onClick={() => onNavigate('futbol')}>
             ⚽ {futbolConfigured ? `${footballMatches.length} hoy` : 'Fútbol'}
           </button>
           <button type="button" className="quick-chip" onClick={() => onNavigate('compra')}>
@@ -3077,9 +3106,18 @@ export default function App() {
         )}
         {activeView === 'tareas' && <TareasTab tasks={tasks} onChange={updateTasks} onDelete={deleteTask} />}
         {activeView === 'calendario' && <CalendarioTab events={events} onChange={updateEvents} onDelete={deleteEvent} />}
-        {activeView === 'entretenimiento' && (
-          <EntretenimientoTab data={entertainment} matches={footballMatches} matchesStatus={footballStatus} onNavigate={setActiveView} />
+        {activeView === 'futbol' && (
+          <FutbolTab
+            data={entertainment}
+            matches={footballMatches}
+            matchesStatus={footballStatus}
+            predicciones={predicciones}
+            onChangePredicciones={updatePredicciones}
+            onDeletePrediccion={deletePrediccion}
+            onNavigate={setActiveView}
+          />
         )}
+        {activeView === 'estrenos' && <EstrenosTab config={entertainment.estrenos} onNavigate={setActiveView} />}
         {activeView === 'habitos' && <HabitosTab habits={habits} onChange={updateHabits} onDelete={deleteHabit} />}
         {activeView === 'compra' && <CompraTab items={compra} onChange={updateCompra} onClearAll={clearCompra} />}
         {activeView === 'capsula' && <CapsulaTab capsules={capsulas} onChange={updateCapsulas} onDelete={deleteCapsula} />}
@@ -3088,15 +3126,6 @@ export default function App() {
         {activeView === 'juego' && <JuegoTab />}
         {activeView === 'notas' && <NotasTab notas={notas} onChange={updateNotas} onDelete={deleteNota} />}
         {activeView === 'ruleta' && <RuletaTab items={ruleta} onChange={updateRuleta} onDelete={deleteRuletaOption} />}
-        {activeView === 'predicciones' && (
-          <PrediccionesTab
-            predicciones={predicciones}
-            footballMatches={footballMatches}
-            onChange={updatePredicciones}
-            onDelete={deletePrediccion}
-          />
-        )}
-        {activeView === 'estadisticas' && <EstadisticasTab futbolConfig={entertainment.futbol} />}
         {activeView === 'tiempo' && <TiempoTab tiempo={tiempo} data={weatherData} status={weatherStatus} onNavigate={setActiveView} />}
         {activeView === 'ajustes' && (
           <AjustesTab
@@ -3173,15 +3202,26 @@ export default function App() {
                   <span className="drawer-icon">🏠</span> Inicio
                 </button>
               </li>
-              {NAV_ITEMS.map(item => (
-                <li key={item.key}>
-                  <button
-                    type="button"
-                    className={`drawer-item ${activeView === item.key ? 'active' : ''}`}
-                    onClick={() => { setActiveView(item.key); setDrawerOpen(false); }}
-                  >
-                    <span className="drawer-icon">{item.icon}</span> {item.label}
-                  </button>
+              {NAV_GROUPS.map(group => (
+                <li key={group.label} className="drawer-group">
+                  <span className="drawer-group-label">{group.label}</span>
+                  <ul className="drawer-group-list">
+                    {group.items.map(key => {
+                      const item = NAV_ITEMS.find(i => i.key === key);
+                      if (!item) return null;
+                      return (
+                        <li key={item.key}>
+                          <button
+                            type="button"
+                            className={`drawer-item ${activeView === item.key ? 'active' : ''}`}
+                            onClick={() => { setActiveView(item.key); setDrawerOpen(false); }}
+                          >
+                            <span className="drawer-icon">{item.icon}</span> {item.label}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </li>
               ))}
               <li>
