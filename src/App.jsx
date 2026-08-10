@@ -12,12 +12,12 @@ const PRIORIDADES = {
 };
 
 const LIGAS_FUTBOL = [
-  { id: 'laliga', name: 'LaLiga', apiName: 'Spanish La Liga' },
-  { id: 'champions', name: 'Champions League', apiName: 'UEFA Champions League' },
-  { id: 'premier', name: 'Premier League', apiName: 'English Premier League' },
-  { id: 'seriea', name: 'Serie A', apiName: 'Italian Serie A' },
-  { id: 'bundesliga', name: 'Bundesliga', apiName: 'German Bundesliga' },
-  { id: 'ligue1', name: 'Ligue 1', apiName: 'French Ligue 1' },
+  { id: 'laliga', name: 'LaLiga', apiName: 'Spanish La Liga', idTable: 4335 },
+  { id: 'champions', name: 'Champions League', apiName: 'UEFA Champions League', idTable: null },
+  { id: 'premier', name: 'Premier League', apiName: 'English Premier League', idTable: 4328 },
+  { id: 'seriea', name: 'Serie A', apiName: 'Italian Serie A', idTable: 4332 },
+  { id: 'bundesliga', name: 'Bundesliga', apiName: 'German Bundesliga', idTable: 4331 },
+  { id: 'ligue1', name: 'Ligue 1', apiName: 'French Ligue 1', idTable: 4334 },
 ];
 
 const PLATAFORMAS = [
@@ -40,6 +40,7 @@ const NAV_ITEMS = [
   { key: 'notas', label: 'Notas', icon: '📝' },
   { key: 'ruleta', label: 'Ruleta', icon: '🎡' },
   { key: 'predicciones', label: 'Predicciones', icon: '🔮' },
+  { key: 'estadisticas', label: 'Estadísticas', icon: '📈' },
   { key: 'datos', label: 'Datos', icon: '📊' },
   { key: 'juego', label: 'Juego', icon: '🎮' },
   { key: 'tiempo', label: 'Tiempo', icon: '🌤️' },
@@ -694,6 +695,20 @@ textarea.text-input { resize: none; min-height: 46px; font-family: var(--font-bo
 .pred-row { gap: 6px; }
 .pred-result-row { align-items: flex-start; }
 .pred-result-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+
+.stats-team-card { background: var(--item-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.stats-team-name { font-size: 14px; color: var(--text); font-weight: 600; }
+.stats-form-strip { display: flex; gap: 4px; }
+.form-badge { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--bg); }
+.form-w { background: var(--green); }
+.form-d { background: var(--amber); }
+.form-l { background: var(--red); }
+.table-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.table-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; background: var(--item-bg); border: 1px solid var(--border); }
+.table-row.favorite { border-color: var(--cyan); border-width: 2px; }
+.table-pos { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); width: 20px; flex-shrink: 0; }
+.table-team { flex: 1; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table-pts { font-family: var(--font-mono); font-size: 11px; color: var(--cyan); flex-shrink: 0; }
 
 .game-wrap { position: relative; width: 100%; max-width: 300px; margin: 0 auto; }
 .game-canvas { width: 100%; height: auto; display: block; border-radius: 10px; border: 1px solid var(--border); touch-action: none; }
@@ -2309,7 +2324,9 @@ function PrediccionesTab({ predicciones, footballMatches, onChange, onDelete }) 
 
   const todayKey = dateKey(new Date());
   const predictedIds = new Set(predicciones.map(p => p.matchId));
-  const todayMatches = footballMatches.filter(m => !predictedIds.has(m.id));
+  const todayMatches = footballMatches.filter(
+    m => !predictedIds.has(m.id) && (m.homeScore === null || m.homeScore === '')
+  );
 
   function setDraft(matchId, field, value) {
     setDrafts(d => ({ ...d, [matchId]: { ...d[matchId], [field]: value.replace(/\D/g, '') } }));
@@ -2446,6 +2463,151 @@ function PrediccionesTab({ predicciones, footballMatches, onChange, onDelete }) 
           </ul>
         )}
       </div>
+    </div>
+  );
+}
+
+function computeForm(results, teamName) {
+  let w = 0, d = 0, l = 0, gf = 0, ga = 0;
+  const form = [];
+  results.slice(0, 5).forEach(r => {
+    const isHome = r.home === teamName;
+    const myScore = isHome ? r.homeScore : r.awayScore;
+    const oppScore = isHome ? r.awayScore : r.homeScore;
+    gf += myScore;
+    ga += oppScore;
+    if (myScore > oppScore) { w++; form.push('W'); }
+    else if (myScore < oppScore) { l++; form.push('L'); }
+    else { d++; form.push('D'); }
+  });
+  return { w, d, l, gf, ga, form };
+}
+
+function EstadisticasTab({ futbolConfig }) {
+  const [sub, setSub] = useState('equipos');
+  const [teamStats, setTeamStats] = useState({});
+  const [tables, setTables] = useState({});
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchTeamStats() {
+      for (const team of futbolConfig.teams) {
+        setTeamStats(s => ({ ...s, [team.id]: { status: 'loading', results: [] } }));
+        try {
+          const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/eventslast.php?id=${team.id}`);
+          const data = await res.json();
+          const results = (data.results || [])
+            .filter(ev => ev.intHomeScore !== null && ev.intHomeScore !== undefined)
+            .map(ev => ({
+              id: ev.idEvent, home: ev.strHomeTeam, away: ev.strAwayTeam,
+              homeScore: Number(ev.intHomeScore), awayScore: Number(ev.intAwayScore), date: ev.dateEvent,
+            }));
+          if (!cancelled) setTeamStats(s => ({ ...s, [team.id]: { status: 'ok', results } }));
+        } catch (e) {
+          if (!cancelled) setTeamStats(s => ({ ...s, [team.id]: { status: 'error', results: [] } }));
+        }
+      }
+    }
+    if (futbolConfig.teams.length > 0) fetchTeamStats();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [futbolConfig.teams]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchTables() {
+      for (const leagueId of futbolConfig.leagues) {
+        const liga = LIGAS_FUTBOL.find(l => l.id === leagueId);
+        if (!liga || !liga.idTable) continue;
+        setTables(s => ({ ...s, [leagueId]: { status: 'loading', rows: [] } }));
+        try {
+          const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/lookuptable.php?l=${liga.idTable}`);
+          const data = await res.json();
+          if (!cancelled) setTables(s => ({ ...s, [leagueId]: { status: 'ok', rows: data.table || [] } }));
+        } catch (e) {
+          if (!cancelled) setTables(s => ({ ...s, [leagueId]: { status: 'error', rows: [] } }));
+        }
+      }
+    }
+    if (futbolConfig.leagues.length > 0) fetchTables();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [futbolConfig.leagues]);
+
+  const leaguesWithTable = futbolConfig.leagues.filter(l => LIGAS_FUTBOL.find(x => x.id === l)?.idTable);
+
+  return (
+    <div className="module-panel">
+      <div className="sub-tabs">
+        <button type="button" className={`sub-tab ${sub === 'equipos' ? 'active' : ''}`} onClick={() => setSub('equipos')}>Mis equipos</button>
+        <button type="button" className={`sub-tab ${sub === 'clasificacion' ? 'active' : ''}`} onClick={() => setSub('clasificacion')}>Clasificación</button>
+      </div>
+
+      {sub === 'equipos' ? (
+        futbolConfig.teams.length === 0 ? (
+          <div className="empty-state">Añade equipos favoritos en Ajustes para ver su forma reciente.</div>
+        ) : (
+          <div className="module-panel">
+            {futbolConfig.teams.map(team => {
+              const ts = teamStats[team.id];
+              const record = ts && ts.status === 'ok' ? computeForm(ts.results, team.name) : null;
+              return (
+                <div key={team.id} className="stats-team-card">
+                  <span className="stats-team-name">{team.name}</span>
+                  {!ts || ts.status === 'loading' ? (
+                    <span className="fecha-meta">Cargando…</span>
+                  ) : ts.status === 'error' ? (
+                    <span className="fecha-meta">No se pudo cargar.</span>
+                  ) : !record || record.form.length === 0 ? (
+                    <span className="fecha-meta">Sin partidos recientes.</span>
+                  ) : (
+                    <>
+                      <div className="stats-form-strip">
+                        {record.form.map((r, i) => (
+                          <span key={i} className={`form-badge form-${r.toLowerCase()}`}>{r}</span>
+                        ))}
+                      </div>
+                      <span className="fecha-meta">{record.w}V {record.d}E {record.l}D · {record.gf}-{record.ga} goles</span>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : leaguesWithTable.length === 0 ? (
+        <div className="empty-state">Añade alguna liga en Ajustes (Champions League no tiene tabla clásica).</div>
+      ) : (
+        <div className="module-panel">
+          {leaguesWithTable.map(leagueId => {
+            const liga = LIGAS_FUTBOL.find(l => l.id === leagueId);
+            const t = tables[leagueId];
+            return (
+              <div key={leagueId} className="dash-section">
+                <span className="section-label">{liga.name}</span>
+                {!t || t.status === 'loading' ? (
+                  <div className="empty-state">Cargando clasificación…</div>
+                ) : t.status === 'error' ? (
+                  <div className="empty-state">No se pudo cargar.</div>
+                ) : (
+                  <ul className="table-list">
+                    {t.rows.slice(0, 10).map((row, i) => {
+                      const isFavorite = futbolConfig.teams.some(fav => fav.name === row.strTeam);
+                      return (
+                        <li key={row.idTeam || i} className={`table-row ${isFavorite ? 'favorite' : ''}`}>
+                          <span className="table-pos">{row.intRank || i + 1}</span>
+                          <span className="table-team">{row.strTeam}</span>
+                          <span className="table-pts">{row.intPoints ?? '-'} pts</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -2934,6 +3096,7 @@ export default function App() {
             onDelete={deletePrediccion}
           />
         )}
+        {activeView === 'estadisticas' && <EstadisticasTab futbolConfig={entertainment.futbol} />}
         {activeView === 'tiempo' && <TiempoTab tiempo={tiempo} data={weatherData} status={weatherStatus} onNavigate={setActiveView} />}
         {activeView === 'ajustes' && (
           <AjustesTab
