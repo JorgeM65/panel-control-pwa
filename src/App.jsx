@@ -36,6 +36,7 @@ const NAV_ITEMS = [
   { key: 'compra', label: 'Compra', icon: '🛒' },
   { key: 'notas', label: 'Notas', icon: '📝' },
   { key: 'fechas', label: 'Fechas', icon: '🎂' },
+  { key: 'finanzas', label: 'Finanzas', icon: '💶' },
   { key: 'futbol', label: 'Fútbol', icon: '⚽' },
   { key: 'estrenos', label: 'Estrenos', icon: '🎬' },
   { key: 'capsula', label: 'Cápsula', icon: '⏳' },
@@ -47,7 +48,7 @@ const NAV_ITEMS = [
 ];
 
 const NAV_GROUPS = [
-  { label: 'Productividad', items: ['tareas', 'calendario', 'habitos', 'compra', 'notas', 'fechas'] },
+  { label: 'Productividad', items: ['tareas', 'calendario', 'habitos', 'compra', 'notas', 'fechas', 'finanzas'] },
   { label: 'Fútbol y ocio', items: ['futbol', 'estrenos', 'capsula', 'ruleta', 'tiempo', 'juego'] },
   { label: 'Sistema', items: ['datos', 'ajustes'] },
 ];
@@ -582,6 +583,7 @@ textarea.text-input { resize: none; min-height: 46px; font-family: var(--font-bo
 .sub-tab.active { background: var(--cyan); color: var(--bg); border-color: var(--cyan); }
 
 .section-head { display: flex; justify-content: space-between; align-items: center; }
+.section-head-actions { display: flex; align-items: center; gap: 10px; }
 .section-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-dim); }
 .gear-btn { font-family: var(--font-mono); font-size: 10.5px; background: none; border: none; color: var(--cyan); cursor: pointer; padding: 4px 0; }
 
@@ -1054,14 +1056,17 @@ function CalendarioTab({ events, onChange, onDelete }) {
   );
 }
 
-function FutbolSection({ config, matches, status, onNavigate }) {
+function FutbolSection({ config, matches, status, onNavigate, onRefresh }) {
   const todayKey = dateKey(new Date());
 
   return (
     <div>
       <div className="section-head">
         <span className="section-label">Partidos de hoy</span>
-        <button type="button" className="gear-btn" onClick={() => onNavigate('ajustes')}>Ajustes ⚙</button>
+        <div className="section-head-actions">
+          <button type="button" className="gear-btn" onClick={onRefresh}>🔄</button>
+          <button type="button" className="gear-btn" onClick={() => onNavigate('ajustes')}>Ajustes ⚙</button>
+        </div>
       </div>
 
       {config.leagues.length === 0 && config.teams.length === 0 ? (
@@ -1093,7 +1098,7 @@ function FutbolSection({ config, matches, status, onNavigate }) {
   );
 }
 
-function EstrenosSection({ config, onNavigate }) {
+function EstrenosSection({ config, onNavigate, refreshSignal, onRefresh }) {
   const [sub, setSub] = useState('cine');
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState('idle');
@@ -1146,13 +1151,16 @@ function EstrenosSection({ config, onNavigate }) {
     }
     fetchData();
     return () => { cancelled = true; };
-  }, [config.apiKey, config.providers, sub]);
+  }, [config.apiKey, config.providers, sub, refreshSignal]);
 
   return (
     <div>
       <div className="section-head">
         <span className="section-label">Estrenos</span>
-        <button type="button" className="gear-btn" onClick={() => onNavigate('ajustes')}>Ajustes ⚙</button>
+        <div className="section-head-actions">
+          <button type="button" className="gear-btn" onClick={onRefresh}>🔄</button>
+          <button type="button" className="gear-btn" onClick={() => onNavigate('ajustes')}>Ajustes ⚙</button>
+        </div>
       </div>
 
       <div className="sub-tabs">
@@ -1187,7 +1195,7 @@ function EstrenosSection({ config, onNavigate }) {
   );
 }
 
-function FutbolTab({ data, matches, matchesStatus, predicciones, onChangePredicciones, onDeletePrediccion, onNavigate }) {
+function FutbolTab({ data, matches, matchesStatus, predicciones, onChangePredicciones, onDeletePrediccion, onNavigate, refreshSignal, onRefresh }) {
   const [sub, setSub] = useState('partidos');
   return (
     <div className="module-panel">
@@ -1197,7 +1205,7 @@ function FutbolTab({ data, matches, matchesStatus, predicciones, onChangePredicc
         <button type="button" className={`sub-tab ${sub === 'estadisticas' ? 'active' : ''}`} onClick={() => setSub('estadisticas')}>Estadísticas</button>
       </div>
       {sub === 'partidos' && (
-        <FutbolSection config={data.futbol} matches={matches} status={matchesStatus} onNavigate={onNavigate} />
+        <FutbolSection config={data.futbol} matches={matches} status={matchesStatus} onNavigate={onNavigate} onRefresh={onRefresh} />
       )}
       {sub === 'predicciones' && (
         <PrediccionesTab
@@ -1205,6 +1213,7 @@ function FutbolTab({ data, matches, matchesStatus, predicciones, onChangePredicc
           footballMatches={matches}
           onChange={onChangePredicciones}
           onDelete={onDeletePrediccion}
+          refreshSignal={refreshSignal}
         />
       )}
       {sub === 'estadisticas' && <EstadisticasTab futbolConfig={data.futbol} />}
@@ -1212,10 +1221,10 @@ function FutbolTab({ data, matches, matchesStatus, predicciones, onChangePredicc
   );
 }
 
-function EstrenosTab({ config, onNavigate }) {
+function EstrenosTab({ config, onNavigate, refreshSignal, onRefresh }) {
   return (
     <div className="module-panel">
-      <EstrenosSection config={config} onNavigate={onNavigate} />
+      <EstrenosSection config={config} onNavigate={onNavigate} refreshSignal={refreshSignal} onRefresh={onRefresh} />
     </div>
   );
 }
@@ -2115,12 +2124,15 @@ function NotasTab({ notas, onChange, onDelete }) {
   );
 }
 
-function TiempoTab({ tiempo, data, status, onNavigate }) {
+function TiempoTab({ tiempo, data, status, onNavigate, onRefresh }) {
   return (
     <div className="module-panel">
       <div className="section-head">
         <span className="section-label">{tiempo.city || 'Tiempo'}</span>
-        <button type="button" className="gear-btn" onClick={() => onNavigate('ajustes')}>Ajustes ⚙</button>
+        <div className="section-head-actions">
+          <button type="button" className="gear-btn" onClick={onRefresh}>🔄</button>
+          <button type="button" className="gear-btn" onClick={() => onNavigate('ajustes')}>Ajustes ⚙</button>
+        </div>
       </div>
 
       {status === 'nocity' ? (
@@ -2346,10 +2358,9 @@ function FechasTab({ fechas, onChange, onDelete }) {
   );
 }
 
-function PrediccionesTab({ predicciones, footballMatches, onChange, onDelete }) {
+function PrediccionesTab({ predicciones, footballMatches, onChange, onDelete, refreshSignal }) {
   const [drafts, setDrafts] = useState({});
   const [resolving, setResolving] = useState(false);
-  const resolvedOnceRef = useRef(false);
 
   const todayKey = dateKey(new Date());
   const predictedIds = new Set(predicciones.map(p => p.matchId));
@@ -2390,8 +2401,6 @@ function PrediccionesTab({ predicciones, footballMatches, onChange, onDelete }) 
   }
 
   useEffect(() => {
-    if (resolvedOnceRef.current) return;
-    resolvedOnceRef.current = true;
     async function resolvePending() {
       const pending = predicciones.filter(p => !p.resolved && p.date < todayKey);
       if (pending.length === 0) return;
@@ -2409,14 +2418,14 @@ function PrediccionesTab({ predicciones, footballMatches, onChange, onDelete }) 
             const idx = updated.findIndex(u => u.id === p.id);
             if (idx !== -1) updated[idx] = { ...p, resolved: true, actualHome, actualAway, points };
           }
-        } catch (e) { /* se reintenta la próxima vez que se abra */ }
+        } catch (e) { /* se reintenta la próxima vez */ }
       }
       onChange(updated);
       setResolving(false);
     }
     resolvePending();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshSignal]);
 
   const resolved = predicciones.filter(p => p.resolved);
   const totalPoints = resolved.reduce((sum, p) => sum + (p.points || 0), 0);
@@ -2641,6 +2650,115 @@ function EstadisticasTab({ futbolConfig }) {
   );
 }
 
+const CATEGORIAS_GASTO = [
+  { id: 'comida', label: 'Comida', icon: '🍽️' },
+  { id: 'transporte', label: 'Transporte', icon: '🚗' },
+  { id: 'ocio', label: 'Ocio', icon: '🎭' },
+  { id: 'casa', label: 'Casa', icon: '🏠' },
+  { id: 'otros', label: 'Otros', icon: '📦' },
+];
+
+function FinanzasTab({ gastos, onChange, onDelete }) {
+  const [concepto, setConcepto] = useState('');
+  const [cantidad, setCantidad] = useState('');
+  const [categoria, setCategoria] = useState('otros');
+  const [fecha, setFecha] = useState(dateKey(new Date()));
+
+  function addGasto() {
+    const trimmed = concepto.trim();
+    const monto = Number(cantidad);
+    if (!trimmed || !cantidad || isNaN(monto) || monto <= 0) return;
+    onChange([...gastos, { id: uid(), concepto: trimmed, cantidad: monto, categoria, fecha }]);
+    setConcepto('');
+    setCantidad('');
+  }
+
+  function removeGasto(id) {
+    onDelete(id);
+  }
+
+  const mesActual = dateKey(new Date()).slice(0, 7);
+  const gastosMes = gastos.filter(g => g.fecha.slice(0, 7) === mesActual);
+  const totalMes = gastosMes.reduce((sum, g) => sum + g.cantidad, 0);
+
+  const porCategoria = CATEGORIAS_GASTO
+    .map(c => ({ ...c, total: gastosMes.filter(g => g.categoria === c.id).reduce((sum, g) => sum + g.cantidad, 0) }))
+    .filter(c => c.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  const sorted = [...gastos].sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+  return (
+    <div className="module-panel">
+      <div className="stat-box tech-frame">
+        <span className="stat-value">{totalMes.toFixed(2)}€</span>
+        <span className="stat-label">Gastado este mes</span>
+      </div>
+
+      <div className="config-panel">
+        <input className="text-input" placeholder="Concepto…" value={concepto} onChange={e => setConcepto(e.target.value)} />
+        <div className="team-search-row">
+          <input
+            className="text-input"
+            inputMode="decimal"
+            placeholder="Importe (€)"
+            value={cantidad}
+            onChange={e => setCantidad(e.target.value.replace(/[^\d.]/g, ''))}
+          />
+          <input className="text-input" type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
+        </div>
+        <div className="chip-row">
+          {CATEGORIAS_GASTO.map(c => (
+            <button
+              key={c.id}
+              type="button"
+              className={`toggle-chip ${categoria === c.id ? 'active' : ''}`}
+              onClick={() => setCategoria(c.id)}
+            >
+              {c.icon} {c.label}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="primary-btn" onClick={addGasto}>Añadir gasto</button>
+      </div>
+
+      {porCategoria.length > 0 && (
+        <div className="dash-section">
+          <span className="section-label">Por categoría este mes</span>
+          <ul className="wheel-list">
+            {porCategoria.map(c => (
+              <li key={c.id} className="wheel-list-item">
+                <span className="wheel-list-text">{c.icon} {c.label}</span>
+                <span className="fecha-meta">{c.total.toFixed(2)}€</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="dash-section">
+        <span className="section-label">Historial</span>
+        {sorted.length === 0 ? (
+          <div className="empty-state">Sin gastos todavía. Apunta el primero arriba.</div>
+        ) : (
+          <ul className="wheel-list">
+            {sorted.map(g => {
+              const cat = CATEGORIAS_GASTO.find(c => c.id === g.categoria);
+              return (
+                <li key={g.id} className="wheel-list-item">
+                  <span className="wheel-list-text">{cat ? cat.icon : ''} {g.concepto}</span>
+                  <span className="fecha-meta">{formatShort(g.fecha)} · {g.cantidad.toFixed(2)}€</span>
+                  <button type="button" className="remove-btn" onClick={() => removeGasto(g.id)} aria-label="Eliminar gasto">×</button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Home({ tasks, events, habits, compra, capsulas, footballMatches, footballConfig, weatherData, fechas, onNavigate, onCompleteTask, onToggleHabit }) {
   const todayKey = dateKey(new Date());
   const order = { alta: 0, media: 1, baja: 2 };
@@ -2799,8 +2917,13 @@ export default function App() {
   const [notificaciones, setNotificaciones] = useState(DEFAULT_NOTIFICACIONES);
   const [fechas, setFechas] = useState([]);
   const [predicciones, setPredicciones] = useState([]);
+  const [gastos, setGastos] = useState([]);
   const [weatherData, setWeatherData] = useState(null);
   const [weatherStatus, setWeatherStatus] = useState('idle');
+  const [refreshSignal, setRefreshSignal] = useState(0);
+  function triggerRefresh() {
+    setRefreshSignal(s => s + 1);
+  }
   const [toast, setToast] = useState(null);
   const toastTimerRef = useRef(null);
   const [footballMatches, setFootballMatches] = useState([]);
@@ -2823,7 +2946,7 @@ export default function App() {
       }
     }
     (async () => {
-      const [t, e, ent, h, c, cap, n, tm, r, notif, fch, pred] = await Promise.all([
+      const [t, e, ent, h, c, cap, n, tm, r, notif, fch, pred, gst] = await Promise.all([
         load('tareas', []),
         load('calendario', []),
         load('entretenimiento', null),
@@ -2836,6 +2959,7 @@ export default function App() {
         load('notificaciones', null),
         load('fechas', []),
         load('predicciones', []),
+        load('gastos', []),
       ]);
       if (!cancelled) {
         setTasks(t);
@@ -2850,6 +2974,7 @@ export default function App() {
         setNotificaciones(notif && notif.manana ? notif : DEFAULT_NOTIFICACIONES);
         setFechas(fch);
         setPredicciones(pred);
+        setGastos(gst);
         setLoaded(true);
       }
     })();
@@ -2911,7 +3036,7 @@ export default function App() {
     }
     fetchFootball();
     return () => { cancelled = true; };
-  }, [entertainment.futbol.leagues, entertainment.futbol.teams]);
+  }, [entertainment.futbol.leagues, entertainment.futbol.teams, refreshSignal]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2936,7 +3061,7 @@ export default function App() {
     }
     fetchWeather();
     return () => { cancelled = true; };
-  }, [tiempo.lat, tiempo.lon]);
+  }, [tiempo.lat, tiempo.lon, refreshSignal]);
 
   const persist = useCallback(async (key, value) => {
     try {
@@ -2973,6 +3098,7 @@ export default function App() {
   function updateRuleta(next) { setRuleta(next); persist('ruleta', next); }
   function updateFechas(next) { setFechas(next); persist('fechas', next); }
   function updatePredicciones(next) { setPredicciones(next); persist('predicciones', next); }
+  function updateGastos(next) { setGastos(next); persist('gastos', next); }
 
   function deleteTask(id) {
     const prev = tasks;
@@ -3019,7 +3145,11 @@ export default function App() {
     updatePredicciones(predicciones.filter(p => p.id !== id));
     showToast('Predicción eliminada', { label: 'Deshacer', onClick: () => updatePredicciones(prev) });
   }
-
+  function deleteGasto(id) {
+    const prev = gastos;
+    updateGastos(gastos.filter(g => g.id !== id));
+    showToast('Gasto eliminado', { label: 'Deshacer', onClick: () => updateGastos(prev) });
+  }
 
   function completeTaskFromHome(id) {
     updateTasks(tasks.map(t => (t.id === id ? { ...t, done: true } : t)));
@@ -3115,18 +3245,30 @@ export default function App() {
             onChangePredicciones={updatePredicciones}
             onDeletePrediccion={deletePrediccion}
             onNavigate={setActiveView}
+            refreshSignal={refreshSignal}
+            onRefresh={triggerRefresh}
           />
         )}
-        {activeView === 'estrenos' && <EstrenosTab config={entertainment.estrenos} onNavigate={setActiveView} />}
+        {activeView === 'estrenos' && (
+          <EstrenosTab
+            config={entertainment.estrenos}
+            onNavigate={setActiveView}
+            refreshSignal={refreshSignal}
+            onRefresh={triggerRefresh}
+          />
+        )}
         {activeView === 'habitos' && <HabitosTab habits={habits} onChange={updateHabits} onDelete={deleteHabit} />}
         {activeView === 'compra' && <CompraTab items={compra} onChange={updateCompra} onClearAll={clearCompra} />}
         {activeView === 'capsula' && <CapsulaTab capsules={capsulas} onChange={updateCapsulas} onDelete={deleteCapsula} />}
         {activeView === 'fechas' && <FechasTab fechas={fechas} onChange={updateFechas} onDelete={deleteFecha} />}
+        {activeView === 'finanzas' && <FinanzasTab gastos={gastos} onChange={updateGastos} onDelete={deleteGasto} />}
         {activeView === 'datos' && <DatosTab tasks={tasks} habits={habits} capsulas={capsulas} />}
         {activeView === 'juego' && <JuegoTab />}
         {activeView === 'notas' && <NotasTab notas={notas} onChange={updateNotas} onDelete={deleteNota} />}
         {activeView === 'ruleta' && <RuletaTab items={ruleta} onChange={updateRuleta} onDelete={deleteRuletaOption} />}
-        {activeView === 'tiempo' && <TiempoTab tiempo={tiempo} data={weatherData} status={weatherStatus} onNavigate={setActiveView} />}
+        {activeView === 'tiempo' && (
+          <TiempoTab tiempo={tiempo} data={weatherData} status={weatherStatus} onNavigate={setActiveView} onRefresh={triggerRefresh} />
+        )}
         {activeView === 'ajustes' && (
           <AjustesTab
             entertainment={entertainment}
