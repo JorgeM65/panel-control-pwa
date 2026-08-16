@@ -1,10 +1,12 @@
-name: Deploy to GitHub Pages
+name: Deploy a GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
 
+# Permisos mínimos necesarios: leer el código, y publicar en Pages usando
+# un token de identidad de corta duración (OIDC), sin secretos que guardar.
 permissions:
   contents: read
   pages: write
@@ -17,32 +19,36 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      - run: npm ci
-      - run: npm run build
+      - name: Instalar dependencias
+        run: npm install
 
-      - uses: actions/configure-pages@v5
+      - name: Compilar
+        run: npm run build
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Preparar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Subir artefacto
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: dist
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
-      - id: deployment
+      - name: Desplegar en GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
