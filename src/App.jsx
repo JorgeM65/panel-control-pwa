@@ -12,7 +12,7 @@ const PRIORIDADES = {
 };
 
 const LIGAS_FUTBOL = [
-  { id: 'laliga', name: 'LaLiga', apiName: 'Spanish La Liga', idTable: 4335 },
+  { id: 'laliga', name: 'LaLiga', apiName: 4335, idTable: 4335 },
   { id: 'champions', name: 'Champions League', apiName: 'UEFA Champions League', idTable: null },
   { id: 'premier', name: 'Premier League', apiName: 'English Premier League', idTable: 4328 },
   { id: 'seriea', name: 'Serie A', apiName: 'Italian Serie A', idTable: 4332 },
