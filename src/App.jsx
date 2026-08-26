@@ -101,20 +101,6 @@ function weatherIcon(code) {
   return '🌡️';
 }
 
-function eventsOnDate(events, dk) {
-  const dayIndex = (new Date(dk + 'T00:00:00').getDay() + 6) % 7;
-  return events
-    .filter(e => {
-      if (e.date === dk) return true;
-      if (e.recurring) {
-        const eventDayIndex = (new Date(e.date + 'T00:00:00').getDay() + 6) % 7;
-        return eventDayIndex === dayIndex && dk > e.date;
-      }
-      return false;
-    })
-    .sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
-}
-
 
 function TareasTab({ tasks, onChange, onDelete }) {
   const [text, setText] = useState('');
@@ -1873,10 +1859,10 @@ function EstadisticasTab({ futbolConfig }) {
     async function fetchTables() {
       for (const leagueId of futbolConfig.leagues) {
         const liga = LIGAS_FUTBOL.find(l => l.id === leagueId);
-        if (!liga || !liga.idTable) continue;
+        if (!liga || !liga.idLeague || liga.id === 'champions') continue;
         setTables(s => ({ ...s, [leagueId]: { status: 'loading', rows: [] } }));
         try {
-          const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/lookuptable.php?l=${liga.idTable}`);
+          const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/lookuptable.php?l=${liga.idLeague}`);
           const data = await res.json();
           if (!cancelled) setTables(s => ({ ...s, [leagueId]: { status: 'ok', rows: data.table || [] } }));
         } catch (e) {
@@ -1889,7 +1875,10 @@ function EstadisticasTab({ futbolConfig }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [futbolConfig.leagues]);
 
-  const leaguesWithTable = futbolConfig.leagues.filter(l => LIGAS_FUTBOL.find(x => x.id === l)?.idTable);
+  const leaguesWithTable = futbolConfig.leagues.filter(l => {
+    const liga = LIGAS_FUTBOL.find(x => x.id === l);
+    return liga && liga.idLeague && liga.id !== 'champions';
+  });
 
   return (
     <div className="module-panel">
@@ -1966,14 +1955,6 @@ function EstadisticasTab({ futbolConfig }) {
     </div>
   );
 }
-
-const CATEGORIAS_GASTO = [
-  { id: 'comida', label: 'Comida', icon: '🍽️' },
-  { id: 'transporte', label: 'Transporte', icon: '🚗' },
-  { id: 'ocio', label: 'Ocio', icon: '🎭' },
-  { id: 'casa', label: 'Casa', icon: '🏠' },
-  { id: 'otros', label: 'Otros', icon: '📦' },
-];
 
 function FinanzasTab({ gastos, onChange, onDelete }) {
   const [concepto, setConcepto] = useState('');
@@ -2314,7 +2295,7 @@ export default function App() {
         for (const leagueId of leagues) {
           const liga = LIGAS_FUTBOL.find(l => l.id === leagueId);
           if (!liga) continue;
-          const url = `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${todayKey}&l=${encodeURIComponent(liga.apiName)}`;
+          const url = `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${todayKey}&l=${liga.idLeague}`;
           const res = await fetch(url);
           const data = await res.json();
           (data.events || []).forEach(ev => {
