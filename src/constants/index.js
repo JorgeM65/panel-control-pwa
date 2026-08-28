@@ -13,12 +13,18 @@ export const PRIORIDADES = {
 };
 
 export const LIGAS_FUTBOL = [
-  { id: 'laliga', name: 'LaLiga', apiName: 'Spanish La Liga', idTable: 4335 },
+  //{ id: 'laliga', name: 'LaLiga', apiName: 'Spanish La Liga', idTable: 4335 },
+  { id: 'laliga', name: 'LaLiga', apiName: 4335, idTable: 4335 },
+  //{ id: 'champions', name: 'Champions League', apiName: 'UEFA Champions League', idTable: null },
   { id: 'champions', name: 'Champions League', apiName: 'UEFA Champions League', idTable: null },
-  { id: 'premier', name: 'Premier League', apiName: 'English Premier League', idTable: 4328 },
-  { id: 'seriea', name: 'Serie A', apiName: 'Italian Serie A', idTable: 4332 },
-  { id: 'bundesliga', name: 'Bundesliga', apiName: 'German Bundesliga', idTable: 4331 },
-  { id: 'ligue1', name: 'Ligue 1', apiName: 'French Ligue 1', idTable: 4334 },
+  //{ id: 'premier', name: 'Premier League', apiName: 'English Premier League', idTable: 4328 },
+  { id: 'premier', name: 'Premier League', apiName: 4328, idTable: 4328 },
+  //{ id: 'seriea', name: 'Serie A', apiName: 'Italian Serie A', idTable: 4332 },
+  { id: 'seriea', name: 'Serie A', apiName: 4332, idTable: 4332 },
+  //{ id: 'bundesliga', name: 'Bundesliga', apiName: 'German Bundesliga', idTable: 4331 },
+  { id: 'bundesliga', name: 'Bundesliga', apiName: 4331, idTable: 4331 },
+  //{ id: 'ligue1', name: 'Ligue 1', apiName: 'French Ligue 1', idTable: 4334 },
+  { id: 'ligue1', name: 'Ligue 1', apiName: 4334, idTable: 4334 },
 ];
 
 export const PLATAFORMAS = [
