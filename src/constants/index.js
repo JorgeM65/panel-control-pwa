@@ -13,12 +13,12 @@ export const PRIORIDADES = {
 };
 
 export const LIGAS_FUTBOL = [
-  { id: 'laliga', name: 'LaLiga', apiName: 'Spanish La Liga', idTable: 4335, idLeague: 4335 },
-  { id: 'champions', name: 'Champions League', apiName: 'UEFA Champions League', idTable: 4480, idLeague: 4480 },
-  { id: 'premier', name: 'Premier League', apiName: 'English Premier League', idTable: 4328, idLeague: 4328 },
-  { id: 'seriea', name: 'Serie A', apiName: 'Italian Serie A', idTable: 4332, idLeague: 4332 },
-  { id: 'bundesliga', name: 'Bundesliga', apiName: 'German Bundesliga', idTable: 4331, idLeague: 4331 },
-  { id: 'ligue1', name: 'Ligue 1', apiName: 'French Ligue 1', idTable: 4334, idLeague: 4334 },
+  { id: 'laliga', name: 'LaLiga', idLeague: 4335 },
+  { id: 'champions', name: 'Champions League', idLeague: 4480 },
+  { id: 'premier', name: 'Premier League', idLeague: 4328 },
+  { id: 'seriea', name: 'Serie A', idLeague: 4332 },
+  { id: 'bundesliga', name: 'Bundesliga', idLeague: 4331 },
+  { id: 'ligue1', name: 'Ligue 1', idLeague: 4334 },
 ];
 
 export const PLATAFORMAS = [
