@@ -1,4 +1,4 @@
-const CACHE_NAME = 'panel-control-v2';
+const CACHE_NAME = 'panel-control-v17';
 const APP_SHELL = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (event) => {
