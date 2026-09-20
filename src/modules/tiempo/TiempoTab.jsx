@@ -2,7 +2,7 @@ import { DIAS_CORTO } from '../../constants';
 
 // Helper local, solo lo usa este componente. Cuando exista services/weather.js
 // en la Fase 5 puede pasar a vivir allí junto al resto de lógica de la API.
-function weatherIcon(code) {
+export function weatherIcon(code) {
   if (code === 0) return '☀️';
   if (code === 1 || code === 2) return '🌤️';
   if (code === 3) return '☁️';

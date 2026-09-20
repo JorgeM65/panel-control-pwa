@@ -17,7 +17,7 @@ import { CapsulaTab } from './modules/capsula/CapsulaTab';
 import { DatosTab } from './modules/datos/DatosTab';
 import { RuletaTab } from './modules/ruleta/RuletaTab';
 import { FechasTab } from './modules/fechas/FechasTab';
-import { TiempoTab } from './modules/tiempo/TiempoTab';
+import { TiempoTab, weatherIcon } from './modules/tiempo/TiempoTab';
 import { AjustesTab } from './modules/ajustes/AjustesTab';
 import { EstrenosTab } from './modules/estrenos/EstrenosTab';
 import { FutbolTab } from './modules/futbol/FutbolTab';
