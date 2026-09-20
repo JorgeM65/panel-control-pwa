@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { LIGAS_FUTBOL, PLATAFORMAS } from '../../constants';
 import { buildMorningSummary, buildEveningSummary, Notificaciones } from '../../utils/notifications';
+import { searchTeams as searchTeamsService } from '../../services/sports';
+import { geocodeCity } from '../../services/weather';
 
 export function AjustesTab({
   entertainment, onChangeEntertainment, tiempo, onChangeTiempo,
@@ -45,8 +47,7 @@ export function AjustesTab({
     if (!q) return;
     setSearching(true);
     try {
-      const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=${encodeURIComponent(q)}`);
-      const data = await res.json();
+      const data = await searchTeamsService(q);
       setTeamResults((data.teams || []).slice(0, 5));
     } catch (e) {
       setTeamResults([]);
@@ -79,8 +80,7 @@ export function AjustesTab({
     if (!q) return;
     setSearchingCity(true);
     try {
-      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=es`);
-      const data = await res.json();
+      const data = await geocodeCity(q);
       setCityResults(data.results || []);
     } catch (e) {
       setCityResults([]);

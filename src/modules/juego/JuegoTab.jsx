@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { getItem, setItem } from '../../storage/storage';
 
 export function JuegoTab() {
   const canvasRef = useRef(null);
@@ -16,7 +17,7 @@ export function JuegoTab() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await window.storage.get('juego_best', false);
+        const res = await getItem('juego_best');
         if (res) setBest(Number(res.value) || 0);
       } catch (e) { /* sin récord todavía */ }
     })();
@@ -144,7 +145,7 @@ export function JuegoTab() {
     if (finalScore > best) {
       setBest(finalScore);
       try {
-        await window.storage.set('juego_best', String(finalScore), false);
+        await setItem('juego_best', String(finalScore));
       } catch (e) { /* no se pudo guardar el récord */ }
     }
   }

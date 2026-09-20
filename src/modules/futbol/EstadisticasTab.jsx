@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { LIGAS_FUTBOL } from '../../constants';
+import { getEventsLastForTeam, getLeagueTable } from '../../services/sports';
 
 // Helper local, solo lo usa este componente. Cuando exista services/football.js
 // en la Fase 5 puede pasar a vivir allí junto al resto de lógica de la API.
@@ -30,8 +31,7 @@ export function EstadisticasTab({ futbolConfig }) {
       for (const team of futbolConfig.teams) {
         setTeamStats(s => ({ ...s, [team.id]: { status: 'loading', results: [] } }));
         try {
-          const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/eventslast.php?id=${team.id}`);
-          const data = await res.json();
+          const data = await getEventsLastForTeam(team.id);
           const results = (data.results || [])
             .filter(ev => ev.intHomeScore !== null && ev.intHomeScore !== undefined)
             .map(ev => ({
@@ -57,8 +57,7 @@ export function EstadisticasTab({ futbolConfig }) {
         if (!liga || !liga.idLeague || liga.id === 'champions') continue;
         setTables(s => ({ ...s, [leagueId]: { status: 'loading', rows: [] } }));
         try {
-          const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/lookuptable.php?l=${liga.idLeague}`);
-          const data = await res.json();
+          const data = await getLeagueTable(liga.idLeague);
           if (!cancelled) setTables(s => ({ ...s, [leagueId]: { status: 'ok', rows: data.table || [] } }));
         } catch (e) {
           if (!cancelled) setTables(s => ({ ...s, [leagueId]: { status: 'error', rows: [] } }));

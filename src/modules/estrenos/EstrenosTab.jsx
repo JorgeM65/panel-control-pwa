@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { PLATAFORMAS } from '../../constants';
 import { dateKey } from '../../utils/dates';
+import { getNowPlaying, discoverByProviders } from '../../services/tmdb';
 
 function EstrenosSection({ config, onNavigate, refreshSignal, onRefresh }) {
   const [sub, setSub] = useState('cine');
@@ -17,30 +18,13 @@ function EstrenosSection({ config, onNavigate, refreshSignal, onRefresh }) {
       }
       setStatus('loading');
       try {
-        // TMDB tiene dos tipos de credencial: la clave v3 (una cadena corta)
-        // y el "API Read Access Token" v4 (un JWT largo con puntos, tipo
-        // eyJ...). Cada una se envía de forma distinta — si no acertamos
-        // cuál es, TMDB devuelve un 401 aunque la clave sea correcta.
-        const isV4Token = config.apiKey.includes('.');
-        const headers = isV4Token ? { Authorization: `Bearer ${config.apiKey}` } : {};
-        const keyParam = isV4Token ? '' : `&api_key=${config.apiKey}`;
-
-        let url;
+        let data;
         if (sub === 'cine') {
-          url = `https://api.themoviedb.org/3/movie/now_playing?region=ES&language=es-ES&page=1${keyParam}`;
+          data = await getNowPlaying(config.apiKey);
         } else {
           const providers = config.providers.length > 0 ? config.providers.join('|') : PLATAFORMAS.map(p => p.id).join('|');
           const today = dateKey(new Date());
-          // primary_release_date.lte evita mostrar películas con fecha de
-          // estreno futura (que aún no están realmente disponibles), y
-          // watch_monetization_types=flatrate se ciñe a lo incluido en la
-          // suscripción, sin mezclar alquiler o compra.
-          url = `https://api.themoviedb.org/3/discover/movie?watch_region=ES&with_watch_providers=${providers}&watch_monetization_types=flatrate&sort_by=primary_release_date.desc&primary_release_date.lte=${today}&language=es-ES&page=1${keyParam}`;
-        }
-        const res = await fetch(url, { headers });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.status_message || `error ${res.status}`);
+          data = await discoverByProviders(config.apiKey, providers, today);
         }
         if (!cancelled) {
           setItems((data.results || []).slice(0, 12));

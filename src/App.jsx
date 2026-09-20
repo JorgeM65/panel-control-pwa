@@ -9,6 +9,9 @@ import {
   daysUntil, nextOccurrence, yearsFor, eventsOnDate,
 } from './utils/dates';
 import styles from './styles/theme';
+import { getItem, setItem } from './storage/storage';
+import { getEventsByDay, getEventsNextForTeam } from './services/sports';
+import { getForecast } from './services/weather';
 import { Notificaciones } from './utils/notifications';
 import { CompraTab } from './modules/compra/CompraTab';
 import { JuegoTab } from './modules/juego/JuegoTab';
@@ -684,7 +687,7 @@ export default function App() {
     let cancelled = false;
     async function load(key, fallback) {
       try {
-        const res = await window.storage.get(key, false);
+        const res = await getItem(key);
         return res ? JSON.parse(res.value) : fallback;
       } catch (e) {
         return fallback;
@@ -742,9 +745,7 @@ export default function App() {
         for (const leagueId of leagues) {
           const liga = LIGAS_FUTBOL.find(l => l.id === leagueId);
           if (!liga) continue;
-          const url = `https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${todayKey}&l=${liga.idLeague}`;
-          const res = await fetch(url);
-          const data = await res.json();
+          const data = await getEventsByDay(todayKey, liga.idLeague);
           (data.events || []).forEach(ev => {
             const { time, date } = utcToLocal(ev.dateEvent, ev.strTime);
             if (date !== todayKey) return;
@@ -756,9 +757,7 @@ export default function App() {
           });
         }
         for (const team of teams) {
-          const url = `https://www.thesportsdb.com/api/v1/json/123/eventsnext.php?id=${team.id}`;
-          const res = await fetch(url);
-          const data = await res.json();
+          const data = await getEventsNextForTeam(team.id);
           (data.events || []).forEach(ev => {
             const { time, date } = utcToLocal(ev.dateEvent, ev.strTime);
             if (date !== todayKey) return;
@@ -792,10 +791,7 @@ export default function App() {
       }
       setWeatherStatus('loading');
       try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${tiempo.lat}&longitude=${tiempo.lon}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=6`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('bad response');
-        const data = await res.json();
+        const data = await getForecast(tiempo.lat, tiempo.lon);
         if (!cancelled) {
           setWeatherData(data);
           setWeatherStatus('ok');
@@ -810,7 +806,7 @@ export default function App() {
 
   const persist = useCallback(async (key, value) => {
     try {
-      const res = await window.storage.set(key, JSON.stringify(value), false);
+      const res = await setItem(key, JSON.stringify(value));
       if (!res) showToast('No se pudo guardar. Inténtalo de nuevo.');
     } catch (e) {
       showToast('No se pudo guardar. Inténtalo de nuevo.');

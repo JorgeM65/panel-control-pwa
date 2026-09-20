@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { uid, dateKey } from '../../utils/dates';
+import { getEventById } from '../../services/sports';
 
 // Helper local, solo lo usa este componente. Cuando exista services/football.js
 // en la Fase 5 puede pasar a vivir allí junto al resto de lógica de la API.
@@ -60,8 +61,7 @@ export function PrediccionesTab({ predicciones, footballMatches, onChange, onDel
       const updated = [...predicciones];
       for (const p of pending) {
         try {
-          const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/lookupevent.php?id=${p.matchId}`);
-          const data = await res.json();
+          const data = await getEventById(p.matchId);
           const ev = data.events && data.events[0];
           if (ev && ev.intHomeScore !== null && ev.intHomeScore !== undefined) {
             const actualHome = Number(ev.intHomeScore);
