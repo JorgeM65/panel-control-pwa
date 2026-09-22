@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  DIAS, DIAS_CORTO, MESES, PRIORIDADES, LIGAS_FUTBOL,
+  DIAS, DIAS_CORTO, MESES, PRIORIDADES,
   NAV_ITEMS, NAV_GROUPS, DEFAULT_ENTRETENIMIENTO, DEFAULT_TIEMPO,
   DEFAULT_NOTIFICACIONES, CATEGORIAS_GASTO,
 } from './constants';
 import {
-  uid, startOfWeek, addDays, dateKey, utcToLocal, formatFullDate, formatShort,
+  uid, startOfWeek, addDays, dateKey, formatFullDate, formatShort,
   daysUntil, nextOccurrence, yearsFor, eventsOnDate,
 } from './utils/dates';
 import styles from './styles/theme';
 import { getItem, setItem } from './storage/storage';
-import { getEventsByDay, getEventsNextForTeam } from './services/sports';
-import { getForecast } from './services/weather';
+import { useWeather } from './hooks/useWeather';
+import { useFootball } from './hooks/useFootball';
 import { Notificaciones } from './utils/notifications';
 import { CompraTab } from './modules/compra/CompraTab';
 import { JuegoTab } from './modules/juego/JuegoTab';
@@ -666,16 +666,12 @@ export default function App() {
   const [fechas, setFechas] = useState([]);
   const [predicciones, setPredicciones] = useState([]);
   const [gastos, setGastos] = useState([]);
-  const [weatherData, setWeatherData] = useState(null);
-  const [weatherStatus, setWeatherStatus] = useState('idle');
   const [refreshSignal, setRefreshSignal] = useState(0);
   function triggerRefresh() {
     setRefreshSignal(s => s + 1);
   }
   const [toast, setToast] = useState(null);
   const toastTimerRef = useRef(null);
-  const [footballMatches, setFootballMatches] = useState([]);
-  const [footballStatus, setFootballStatus] = useState('idle');
 
   function showToast(message, action) {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -729,80 +725,11 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchFootball() {
-      const { leagues, teams } = entertainment.futbol;
-      if (leagues.length === 0 && teams.length === 0) {
-        setFootballMatches([]);
-        setFootballStatus('ok');
-        return;
-      }
-      setFootballStatus('loading');
-      try {
-        const todayKey = dateKey(new Date());
-        const results = [];
-        for (const leagueId of leagues) {
-          const liga = LIGAS_FUTBOL.find(l => l.id === leagueId);
-          if (!liga) continue;
-          const data = await getEventsByDay(todayKey, liga.idLeague);
-          (data.events || []).forEach(ev => {
-            const { time, date } = utcToLocal(ev.dateEvent, ev.strTime);
-            if (date !== todayKey) return;
-            results.push({
-              id: ev.idEvent, home: ev.strHomeTeam, away: ev.strAwayTeam,
-              homeScore: ev.intHomeScore, awayScore: ev.intAwayScore,
-              time, competition: liga.name, date,
-            });
-          });
-        }
-        for (const team of teams) {
-          const data = await getEventsNextForTeam(team.id);
-          (data.events || []).forEach(ev => {
-            const { time, date } = utcToLocal(ev.dateEvent, ev.strTime);
-            if (date !== todayKey) return;
-            if (results.some(r => r.id === ev.idEvent)) return;
-            results.push({
-              id: ev.idEvent, home: ev.strHomeTeam, away: ev.strAwayTeam,
-              homeScore: ev.intHomeScore, awayScore: ev.intAwayScore,
-              time, competition: ev.strLeague, date,
-            });
-          });
-        }
-        results.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-        if (!cancelled) {
-          setFootballMatches(results);
-          setFootballStatus('ok');
-        }
-      } catch (e) {
-        if (!cancelled) setFootballStatus('error');
-      }
-    }
-    fetchFootball();
-    return () => { cancelled = true; };
-  }, [entertainment.futbol.leagues, entertainment.futbol.teams, refreshSignal]);
+  const { matches: footballMatches, status: footballStatus } = useFootball(
+    entertainment.futbol.leagues, entertainment.futbol.teams, refreshSignal
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchWeather() {
-      if (!tiempo.lat || !tiempo.lon) {
-        setWeatherStatus('nocity');
-        return;
-      }
-      setWeatherStatus('loading');
-      try {
-        const data = await getForecast(tiempo.lat, tiempo.lon);
-        if (!cancelled) {
-          setWeatherData(data);
-          setWeatherStatus('ok');
-        }
-      } catch (e) {
-        if (!cancelled) setWeatherStatus('error');
-      }
-    }
-    fetchWeather();
-    return () => { cancelled = true; };
-  }, [tiempo.lat, tiempo.lon, refreshSignal]);
+  const { data: weatherData, status: weatherStatus } = useWeather(tiempo.lat, tiempo.lon, refreshSignal);
 
   const persist = useCallback(async (key, value) => {
     try {

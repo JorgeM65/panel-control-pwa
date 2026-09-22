@@ -1,45 +1,9 @@
-import { useState, useEffect } from 'react';
-import { PLATAFORMAS } from '../../constants';
-import { dateKey } from '../../utils/dates';
-import { getNowPlaying, discoverByProviders } from '../../services/tmdb';
+import { useState } from 'react';
+import { useReleases } from '../../hooks/useReleases';
 
 function EstrenosSection({ config, onNavigate, refreshSignal, onRefresh }) {
   const [sub, setSub] = useState('cine');
-  const [items, setItems] = useState([]);
-  const [status, setStatus] = useState('idle');
-  const [errorDetail, setErrorDetail] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchData() {
-      if (!config.apiKey) {
-        setStatus('nokey');
-        return;
-      }
-      setStatus('loading');
-      try {
-        let data;
-        if (sub === 'cine') {
-          data = await getNowPlaying(config.apiKey);
-        } else {
-          const providers = config.providers.length > 0 ? config.providers.join('|') : PLATAFORMAS.map(p => p.id).join('|');
-          const today = dateKey(new Date());
-          data = await discoverByProviders(config.apiKey, providers, today);
-        }
-        if (!cancelled) {
-          setItems((data.results || []).slice(0, 12));
-          setStatus('ok');
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setErrorDetail(String((e && e.message) || e));
-          setStatus('error');
-        }
-      }
-    }
-    fetchData();
-    return () => { cancelled = true; };
-  }, [config.apiKey, config.providers, sub, refreshSignal]);
+  const { items, status, errorDetail } = useReleases(config.apiKey, config.providers, sub, refreshSignal);
 
   return (
     <div>

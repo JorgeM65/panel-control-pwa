@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { uid, dateKey } from '../../utils/dates';
-import { getEventById } from '../../services/sports';
+import { usePredictions } from '../../hooks/usePredictions';
 
-// Helper local, solo lo usa este componente. Cuando exista services/football.js
-// en la Fase 5 puede pasar a vivir allí junto al resto de lógica de la API.
+// Sigue viviendo aquí a propósito (punto 10 del criterio de hooks): es lógica
+// de negocio pura, no comunicación HTTP ni ciclo de vida React. El hook la
+// recibe como parámetro en vez de poseerla.
 function calcPredictionPoints(predHome, predAway, actualHome, actualAway) {
   if (predHome === actualHome && predAway === actualAway) return 3;
   const predOutcome = predHome > predAway ? 'home' : predHome < predAway ? 'away' : 'draw';
@@ -13,7 +14,7 @@ function calcPredictionPoints(predHome, predAway, actualHome, actualAway) {
 
 export function PrediccionesTab({ predicciones, footballMatches, onChange, onDelete, refreshSignal }) {
   const [drafts, setDrafts] = useState({});
-  const [resolving, setResolving] = useState(false);
+  const { resolving } = usePredictions(predicciones, onChange, refreshSignal, calcPredictionPoints);
 
   const todayKey = dateKey(new Date());
   const predictedIds = new Set(predicciones.map(p => p.matchId));
@@ -52,32 +53,6 @@ export function PrediccionesTab({ predicciones, footballMatches, onChange, onDel
   function removePrediction(id) {
     onDelete(id);
   }
-
-  useEffect(() => {
-    async function resolvePending() {
-      const pending = predicciones.filter(p => !p.resolved && p.date < todayKey);
-      if (pending.length === 0) return;
-      setResolving(true);
-      const updated = [...predicciones];
-      for (const p of pending) {
-        try {
-          const data = await getEventById(p.matchId);
-          const ev = data.events && data.events[0];
-          if (ev && ev.intHomeScore !== null && ev.intHomeScore !== undefined) {
-            const actualHome = Number(ev.intHomeScore);
-            const actualAway = Number(ev.intAwayScore);
-            const points = calcPredictionPoints(p.predHome, p.predAway, actualHome, actualAway);
-            const idx = updated.findIndex(u => u.id === p.id);
-            if (idx !== -1) updated[idx] = { ...p, resolved: true, actualHome, actualAway, points };
-          }
-        } catch (e) { /* se reintenta la próxima vez */ }
-      }
-      onChange(updated);
-      setResolving(false);
-    }
-    resolvePending();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshSignal]);
 
   const resolved = predicciones.filter(p => p.resolved);
   const totalPoints = resolved.reduce((sum, p) => sum + (p.points || 0), 0);

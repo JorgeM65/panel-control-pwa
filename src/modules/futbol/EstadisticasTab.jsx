@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { LIGAS_FUTBOL } from '../../constants';
-import { getEventsLastForTeam, getLeagueTable } from '../../services/sports';
+import { useFootballStats } from '../../hooks/useFootballStats';
 
-// Helper local, solo lo usa este componente. Cuando exista services/football.js
-// en la Fase 5 puede pasar a vivir allí junto al resto de lógica de la API.
+// Sigue viviendo aquí a propósito: es transformación específica de la lógica
+// de la app (cálculo de forma reciente), no comunicación HTTP.
 function computeForm(results, teamName) {
   let w = 0, d = 0, l = 0, gf = 0, ga = 0;
   const form = [];
@@ -22,52 +22,7 @@ function computeForm(results, teamName) {
 
 export function EstadisticasTab({ futbolConfig }) {
   const [sub, setSub] = useState('equipos');
-  const [teamStats, setTeamStats] = useState({});
-  const [tables, setTables] = useState({});
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchTeamStats() {
-      for (const team of futbolConfig.teams) {
-        setTeamStats(s => ({ ...s, [team.id]: { status: 'loading', results: [] } }));
-        try {
-          const data = await getEventsLastForTeam(team.id);
-          const results = (data.results || [])
-            .filter(ev => ev.intHomeScore !== null && ev.intHomeScore !== undefined)
-            .map(ev => ({
-              id: ev.idEvent, home: ev.strHomeTeam, away: ev.strAwayTeam,
-              homeScore: Number(ev.intHomeScore), awayScore: Number(ev.intAwayScore), date: ev.dateEvent,
-            }));
-          if (!cancelled) setTeamStats(s => ({ ...s, [team.id]: { status: 'ok', results } }));
-        } catch (e) {
-          if (!cancelled) setTeamStats(s => ({ ...s, [team.id]: { status: 'error', results: [] } }));
-        }
-      }
-    }
-    if (futbolConfig.teams.length > 0) fetchTeamStats();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [futbolConfig.teams]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchTables() {
-      for (const leagueId of futbolConfig.leagues) {
-        const liga = LIGAS_FUTBOL.find(l => l.id === leagueId);
-        if (!liga || !liga.idLeague || liga.id === 'champions') continue;
-        setTables(s => ({ ...s, [leagueId]: { status: 'loading', rows: [] } }));
-        try {
-          const data = await getLeagueTable(liga.idLeague);
-          if (!cancelled) setTables(s => ({ ...s, [leagueId]: { status: 'ok', rows: data.table || [] } }));
-        } catch (e) {
-          if (!cancelled) setTables(s => ({ ...s, [leagueId]: { status: 'error', rows: [] } }));
-        }
-      }
-    }
-    if (futbolConfig.leagues.length > 0) fetchTables();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [futbolConfig.leagues]);
+  const { teamStats, tables } = useFootballStats(futbolConfig.teams, futbolConfig.leagues);
 
   const leaguesWithTable = futbolConfig.leagues.filter(l => {
     const liga = LIGAS_FUTBOL.find(x => x.id === l);
