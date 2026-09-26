@@ -10,6 +10,7 @@ export function usePredictions(predicciones, onChange, refreshSignal, calcPoints
   const [resolving, setResolving] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     async function resolvePending() {
       const todayKey = dateKey(new Date());
       const pending = predicciones.filter(p => !p.resolved && p.date < todayKey);
@@ -29,10 +30,13 @@ export function usePredictions(predicciones, onChange, refreshSignal, calcPoints
           }
         } catch (e) { /* se reintenta la próxima vez */ }
       }
-      onChange(updated);
-      setResolving(false);
+      if (!cancelled) {
+        onChange(updated);
+        setResolving(false);
+      }
     }
     resolvePending();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshSignal]);
 
