@@ -507,7 +507,7 @@ function FinanzasTab({ gastos, onChange, onDelete }) {
   );
 }
 
-function Home({ tasks, events, habits, compra, capsulas, footballMatches, footballConfig, weatherData, fechas, onNavigate, onCompleteTask, onToggleHabit }) {
+function Home({ tasks, events, habits, compra, capsulas, footballMatches, footballConfig, weatherData, weatherStatus, predicciones, fechas, onNavigate, onCompleteTask, onToggleHabit }) {
   const todayKey = dateKey(new Date());
   const order = { alta: 0, media: 1, baja: 2 };
 
@@ -525,6 +525,7 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
   const todayFechas = (fechas || []).filter(f => nextOccurrence(f.fecha) === todayKey);
 
   const futbolConfigured = footballConfig.leagues.length > 0 || footballConfig.teams.length > 0;
+  const pendingPredictions = predicciones.filter(p => !p.resolved).length;
 
   const ICON = { event: '📅', match: '⚽', capsule: '⏳', habit: '🔥', fecha: '🎂' };
   const dayEntries = [];
@@ -564,66 +565,85 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
         </div>
       </div>
 
-      <div className="dash-section">
-        <div className="dash-section-head">
-          <span className="section-label">Tareas urgentes</span>
-          <button type="button" className="dash-link" onClick={() => onNavigate('tareas')}>Ver todas ›</button>
+      {urgentTasks.length === 0 && dayEntries.length === 0 ? (
+        <div className="dash-section">
+          <div className="empty-state">Día tranquilo. Nada urgente ni pendiente por ahora.</div>
         </div>
-        {urgentTasks.length === 0 ? (
-          <div className="empty-state">Sin tareas pendientes ✓</div>
-        ) : (
-          <ul className="dash-task-list">
-            {urgentTasks.map(t => (
-              <li
-                key={t.id}
-                className="dash-task-row"
-                style={{ '--chip-color': PRIORIDADES[t.priority].color }}
-                onClick={() => onNavigate('tareas')}
-              >
-                <span className="dash-task-dot" />
-                <span className="dash-task-text">{t.text}</span>
-                <button
-                  type="button"
-                  className="dash-task-check"
-                  onClick={(e) => { e.stopPropagation(); onCompleteTask(t.id); }}
-                  aria-label="Completar tarea"
-                >
-                  ✓
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="dash-section">
-        <div className="dash-section-head">
-          <span className="section-label">Resumen del día</span>
-        </div>
-        {dayEntries.length === 0 ? (
-          <div className="empty-state">Día tranquilo. Nada pendiente por ahora.</div>
-        ) : (
-          <ul className="dash-day-list">
-            {dayEntries.slice(0, 6).map(e => (
-              <li key={e.key} className="dash-day-row" onClick={() => goTo(e.type)}>
-                <span className="dash-day-icon">{ICON[e.type]}</span>
-                {e.time && <span className="dash-day-time">{e.time}</span>}
-                <span className="dash-day-label">{e.label}</span>
-                {e.type === 'habit' && (
-                  <button
-                    type="button"
-                    className="dash-task-check"
-                    onClick={(ev) => { ev.stopPropagation(); onToggleHabit(e.habitId); }}
-                    aria-label="Marcar hábito de hoy"
+      ) : (
+        <>
+          <div className="dash-section">
+            <div className="dash-section-head">
+              <span className="section-label">Tareas urgentes</span>
+              <button type="button" className="dash-link" onClick={() => onNavigate('tareas')}>Ver todas ›</button>
+            </div>
+            {urgentTasks.length === 0 ? (
+              <div className="empty-state">Sin tareas pendientes ✓</div>
+            ) : (
+              <ul className="dash-task-list">
+                {urgentTasks.map(t => (
+                  <li
+                    key={t.id}
+                    className="dash-task-row"
+                    style={{ '--chip-color': PRIORIDADES[t.priority].color }}
+                    onClick={() => onNavigate('tareas')}
                   >
-                    ✓
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                    <span className="dash-task-dot" />
+                    <span className="dash-task-text">{t.text}</span>
+                    <button
+                      type="button"
+                      className="dash-task-check"
+                      onClick={(e) => { e.stopPropagation(); onCompleteTask(t.id); }}
+                      aria-label="Completar tarea"
+                    >
+                      ✓
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="dash-section">
+            <div className="dash-section-head">
+              <span className="section-label">Resumen del día</span>
+            </div>
+            {dayEntries.length === 0 ? (
+              <div className="empty-state">Día tranquilo. Nada pendiente por ahora.</div>
+            ) : (
+              <ul className="dash-day-list">
+                {dayEntries.slice(0, 6).map(e => (
+                  <li key={e.key} className="dash-day-row" onClick={() => goTo(e.type)}>
+                    <span className="dash-day-icon">{ICON[e.type]}</span>
+                    {e.time && <span className="dash-day-time">{e.time}</span>}
+                    <span className="dash-day-label">{e.label}</span>
+                    {e.type === 'habit' && (
+                      <button
+                        type="button"
+                        className="dash-task-check"
+                        onClick={(ev) => { ev.stopPropagation(); onToggleHabit(e.habitId); }}
+                        aria-label="Marcar hábito de hoy"
+                      >
+                        ✓
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
+
+      {pendingPredictions > 0 && (
+        <div className="dash-section">
+          <div className="dash-section-head">
+            <span className="section-label">🔮 Predicciones</span>
+            <button type="button" className="dash-link" onClick={() => onNavigate('futbol')}>
+              {pendingPredictions} pendiente{pendingPredictions === 1 ? '' : 's'} ›
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="dash-section">
         <span className="section-label">Accesos rápidos</span>
@@ -639,7 +659,11 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
           <button type="button" className="quick-chip" onClick={() => onNavigate('datos')}>📊 Datos</button>
           <button type="button" className="quick-chip" onClick={() => onNavigate('juego')}>🎮 Jugar</button>
           <button type="button" className="quick-chip" onClick={() => onNavigate('tiempo')}>
-            {weatherData ? `${weatherIcon(weatherData.current.weather_code)} ${Math.round(weatherData.current.temperature_2m)}°` : '🌤️ Tiempo'}
+            {weatherStatus === 'error'
+              ? '🌤️ Error'
+              : weatherData
+              ? `${weatherIcon(weatherData.current.weather_code)} ${Math.round(weatherData.current.temperature_2m)}°`
+              : '🌤️ Tiempo'}
           </button>
         </div>
       </div>
@@ -897,6 +921,8 @@ export default function App() {
             footballConfig={entertainment.futbol}
             fechas={fechas}
             weatherData={weatherData}
+            weatherStatus={weatherStatus}
+            predicciones={predicciones}
             onNavigate={setActiveView}
             onCompleteTask={completeTaskFromHome}
             onToggleHabit={toggleHabitFromHome}
