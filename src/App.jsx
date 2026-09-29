@@ -525,7 +525,7 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
   const todayFechas = (fechas || []).filter(f => nextOccurrence(f.fecha) === todayKey);
 
   const futbolConfigured = footballConfig.leagues.length > 0 || footballConfig.teams.length > 0;
-  const pendingPredictions = predicciones.filter(p => !p.resolved).length;
+  const pendingPredictions = predicciones.filter(p => p.resolved !== true).length;
 
   const ICON = { event: '📅', match: '⚽', capsule: '⏳', habit: '🔥', fecha: '🎂' };
   const dayEntries = [];
