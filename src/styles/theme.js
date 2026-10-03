@@ -117,42 +117,118 @@ html, body {
 .tech-frame::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
 .tech-frame::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
 
-.home-dash { display: flex; flex-direction: column; gap: 18px; }
+.home-dash { display: flex; flex-direction: column; gap: 14px; }
 
-.kpi-strip { display: flex; gap: 8px; }
-.kpi-box { flex: 1; display: flex; flex-direction: column; gap: 4px; background: var(--item-bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 6px; text-align: center; }
-.kpi-value { font-family: var(--font-mono); font-size: 17px; font-weight: 700; color: var(--cyan); }
-.kpi-label { font-family: var(--font-mono); font-size: 7.5px; letter-spacing: 0.02em; color: var(--text-dim); text-transform: uppercase; }
-
+/* Compartida con otros módulos (Predicciones, Estadísticas, Finanzas): no tocar */
 .dash-section { display: flex; flex-direction: column; gap: 8px; }
-.dash-section-head { display: flex; align-items: center; justify-content: space-between; }
-.dash-link { font-family: var(--font-mono); font-size: 10.5px; background: none; border: none; color: var(--cyan); cursor: pointer; padding: 2px 0; }
 
-.dash-task-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.dash-task-row {
-  display: flex; align-items: center; gap: 10px; background: var(--item-bg); border: 1px solid var(--border);
-  border-radius: 8px; padding: 9px 12px; cursor: pointer;
+/* ---- KPI 2x2 ---- */
+.hd-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.hd-kpi {
+  position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;
+  min-height: 78px; padding: 12px 12px 12px 16px; border-radius: 14px; overflow: hidden;
+  background: linear-gradient(160deg, var(--item-bg) 0%, var(--surface) 140%);
+  border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
 }
-.dash-task-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--chip-color); flex-shrink: 0; }
-.dash-task-text { font-size: 13.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-.dash-task-check {
-  width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--cyan);
-  background: transparent; color: var(--cyan); font-size: 12px; cursor: pointer; flex-shrink: 0;
+.hd-kpi::before {
+  content: ''; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px;
+  border-radius: 0 3px 3px 0; background: var(--accent);
 }
+.hd-kpi-label {
+  display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim);
+}
+.hd-kpi-ico { font-size: 12px; flex-shrink: 0; }
+.hd-kpi-value { font-family: var(--font-display); font-size: 28px; font-weight: 700; line-height: 1; color: var(--accent); }
+.hd-kpi-bar { display: block; height: 4px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.hd-kpi-bar > span { display: block; height: 100%; width: var(--pct, 0%); border-radius: inherit; background: var(--accent); }
 
-.dash-day-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.dash-day-row {
-  display: flex; align-items: center; gap: 8px; background: var(--item-bg); border: 1px solid var(--border);
-  border-radius: 8px; padding: 9px 12px; cursor: pointer;
+/* ---- Tarjeta principal: Lo importante ahora ---- */
+.hd-card {
+  position: relative; display: flex; flex-direction: column; gap: 14px; padding: 16px 14px 14px;
+  border-radius: 16px; background: var(--item-bg); border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
-.dash-day-icon { font-size: 13px; flex-shrink: 0; }
-.dash-day-time { font-family: var(--font-mono); font-size: 11px; color: var(--cyan); flex-shrink: 0; }
-.dash-day-label { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.hd-card::before {
+  content: ''; position: absolute; left: 16px; right: 16px; top: -1px; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--cyan), transparent);
+}
+.hd-card-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--text); }
+.hd-zone { display: flex; flex-direction: column; gap: 8px; }
+.hd-zone + .hd-zone { padding-top: 12px; border-top: 1px dashed var(--border); }
+.hd-zone-head { display: flex; align-items: center; justify-content: space-between; }
+.hd-zone-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-dim); }
+.hd-link {
+  font-family: var(--font-mono); font-size: 10.5px; background: none; border: none; color: var(--cyan);
+  cursor: pointer; padding: 8px 0 8px 12px; -webkit-tap-highlight-color: transparent;
+}
+.hd-zone-empty { font-size: 13px; color: var(--green); padding: 2px 0; }
+.hd-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.hd-task, .hd-entry {
+  position: relative; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 8px 6px 14px;
+  border-radius: 10px; background: var(--surface); border: 1px solid var(--border-soft);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.hd-task::before {
+  content: ''; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px;
+  border-radius: 0 3px 3px 0; background: var(--chip-color);
+}
+.hd-task:active, .hd-entry:active { background: var(--item-bg); border-color: var(--cyan-dim); }
+.hd-task-text, .hd-entry-label {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; color: var(--text);
+}
+.hd-entry-ico { font-size: 15px; flex-shrink: 0; }
+.hd-entry-time { font-family: var(--font-mono); font-size: 11px; color: var(--cyan); flex-shrink: 0; }
+.hd-check {
+  width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--cyan); background: transparent;
+  color: var(--cyan); font-size: 14px; cursor: pointer; flex-shrink: 0; -webkit-tap-highlight-color: transparent;
+}
+.hd-check:active { background: var(--cyan); color: var(--bg); }
 
-.quick-row { display: flex; flex-wrap: wrap; gap: 8px; }
+/* ---- Día tranquilo (estado positivo compacto) ---- */
+.hd-calm {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(88, 211, 152, 0.1), transparent 70%), var(--item-bg);
+  border: 1px solid rgba(88, 211, 152, 0.28);
+}
+.hd-calm-ico {
+  width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 14px; color: var(--green); background: rgba(88, 211, 152, 0.16);
+}
+.hd-calm-text { font-size: 13.5px; color: var(--text); }
+
+/* ---- Predicciones pendientes (solo si existen) ---- */
+.hd-pred {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(156, 147, 232, 0.16), transparent 75%), var(--item-bg);
+  border: 1px solid rgba(156, 147, 232, 0.35); color: var(--text); text-align: left; cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease; -webkit-tap-highlight-color: transparent;
+}
+.hd-pred:active { transform: scale(0.985); border-color: var(--violet); }
+.hd-pred-ico {
+  width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 18px; background: rgba(156, 147, 232, 0.18);
+}
+.hd-pred-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.hd-pred-title { font-family: var(--font-display); font-size: 14px; font-weight: 600; }
+.hd-pred-sub { font-family: var(--font-mono); font-size: 11px; color: var(--violet); }
+.hd-pred-go { font-size: 22px; line-height: 1; color: var(--violet); }
+
+/* ---- Accesos rápidos: cuadrícula compacta de 4 columnas (los 7 siempre visibles) ---- */
+.hd-quick-wrap { display: flex; flex-direction: column; gap: 8px; }
+.hd-section-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-dim); }
+.quick-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .quick-chip {
-  font-family: var(--font-mono); font-size: 11px; padding: 8px 12px; border-radius: 999px;
-  border: 1px solid var(--border); background: var(--item-bg); color: var(--text-dim); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0;
+  padding: 12px 4px 10px; border-radius: 14px; border: 1px solid var(--border); background: var(--item-bg);
+  color: var(--text); cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease; -webkit-tap-highlight-color: transparent;
+}
+.quick-chip:active { transform: scale(0.94); border-color: var(--cyan); background: var(--surface); }
+.quick-ico { font-size: 24px; line-height: 1; }
+.quick-label {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim);
 }
 
 .drawer-backdrop {
