@@ -525,7 +525,7 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
   const todayFechas = (fechas || []).filter(f => nextOccurrence(f.fecha) === todayKey);
 
   const futbolConfigured = footballConfig.leagues.length > 0 || footballConfig.teams.length > 0;
-  const pendingPredictions = predicciones.filter(p => p.resolved !== true).length;
+  const pendingPredictions = predicciones.filter(p => !p.resolved).length;
 
   const ICON = { event: '📅', match: '⚽', capsule: '⏳', habit: '🔥', fecha: '🎂' };
   const dayEntries = [];
@@ -544,54 +544,68 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
     else onNavigate('habitos');
   }
 
+  // Helpers locales de presentación (no cambian ningún dato): el tiempo sigue
+  // siendo un acceso rápido con tres estados, y el % de hábitos alimenta solo
+  // la barra del KPI.
+  const weatherChip = weatherStatus === 'error'
+    ? { icon: '🌤️', label: 'Error' }
+    : weatherData
+    ? { icon: weatherIcon(weatherData.current.weather_code), label: `${Math.round(weatherData.current.temperature_2m)}°` }
+    : { icon: '🌤️', label: 'Tiempo' };
+  const habitsPct = habits.length === 0 ? 0 : Math.round((habitsToday.length / habits.length) * 100);
+
   return (
     <div className="home-dash">
-      <div className="kpi-strip">
-        <div className="kpi-box tech-frame">
-          <span className="kpi-value">{pendingTasks.length}</span>
-          <span className="kpi-label">Pendientes</span>
+      <div className="hd-kpis">
+        <div className="hd-kpi" style={{ '--accent': 'var(--amber)' }}>
+          <span className="hd-kpi-label"><span className="hd-kpi-ico">✓</span>Pendientes</span>
+          <span className="hd-kpi-value">{pendingTasks.length}</span>
         </div>
-        <div className="kpi-box tech-frame">
-          <span className="kpi-value">{todayEvents.length}</span>
-          <span className="kpi-label">Hoy</span>
+        <div className="hd-kpi" style={{ '--accent': 'var(--cyan)' }}>
+          <span className="hd-kpi-label"><span className="hd-kpi-ico">📅</span>Hoy</span>
+          <span className="hd-kpi-value">{todayEvents.length}</span>
         </div>
-        <div className="kpi-box tech-frame">
-          <span className="kpi-value">{habitsToday.length}/{habits.length}</span>
-          <span className="kpi-label">Hábitos</span>
+        <div className="hd-kpi" style={{ '--accent': 'var(--green)', '--pct': `${habitsPct}%` }}>
+          <span className="hd-kpi-label"><span className="hd-kpi-ico">🔥</span>Hábitos</span>
+          <span className="hd-kpi-value">{habitsToday.length}/{habits.length}</span>
+          <span className="hd-kpi-bar"><span /></span>
         </div>
-        <div className="kpi-box tech-frame">
-          <span className="kpi-value">{completionRate}%</span>
-          <span className="kpi-label">Productividad</span>
+        <div className="hd-kpi" style={{ '--accent': 'var(--violet)', '--pct': `${completionRate}%` }}>
+          <span className="hd-kpi-label"><span className="hd-kpi-ico">📊</span>Productividad</span>
+          <span className="hd-kpi-value">{completionRate}%</span>
+          <span className="hd-kpi-bar"><span /></span>
         </div>
       </div>
 
       {urgentTasks.length === 0 && dayEntries.length === 0 ? (
-        <div className="dash-section">
-          <div className="empty-state">Día tranquilo. Nada urgente ni pendiente por ahora.</div>
+        <div className="hd-calm">
+          <span className="hd-calm-ico">✓</span>
+          <span className="hd-calm-text">Día tranquilo. Nada urgente ni pendiente por ahora.</span>
         </div>
       ) : (
-        <>
-          <div className="dash-section">
-            <div className="dash-section-head">
-              <span className="section-label">Tareas urgentes</span>
-              <button type="button" className="dash-link" onClick={() => onNavigate('tareas')}>Ver todas ›</button>
+        <section className="hd-card">
+          <div className="hd-card-title">⚡ Lo importante ahora</div>
+
+          <div className="hd-zone">
+            <div className="hd-zone-head">
+              <span className="hd-zone-label">Tareas urgentes</span>
+              <button type="button" className="hd-link" onClick={() => onNavigate('tareas')}>Ver todas ›</button>
             </div>
             {urgentTasks.length === 0 ? (
-              <div className="empty-state">Sin tareas pendientes ✓</div>
+              <div className="hd-zone-empty">Sin tareas pendientes ✓</div>
             ) : (
-              <ul className="dash-task-list">
+              <ul className="hd-list">
                 {urgentTasks.map(t => (
                   <li
                     key={t.id}
-                    className="dash-task-row"
+                    className="hd-task"
                     style={{ '--chip-color': PRIORIDADES[t.priority].color }}
                     onClick={() => onNavigate('tareas')}
                   >
-                    <span className="dash-task-dot" />
-                    <span className="dash-task-text">{t.text}</span>
+                    <span className="hd-task-text">{t.text}</span>
                     <button
                       type="button"
-                      className="dash-task-check"
+                      className="hd-check"
                       onClick={(e) => { e.stopPropagation(); onCompleteTask(t.id); }}
                       aria-label="Completar tarea"
                     >
@@ -603,23 +617,21 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
             )}
           </div>
 
-          <div className="dash-section">
-            <div className="dash-section-head">
-              <span className="section-label">Resumen del día</span>
-            </div>
-            {dayEntries.length === 0 ? (
-              <div className="empty-state">Día tranquilo. Nada pendiente por ahora.</div>
-            ) : (
-              <ul className="dash-day-list">
+          {dayEntries.length > 0 && (
+            <div className="hd-zone">
+              <div className="hd-zone-head">
+                <span className="hd-zone-label">Agenda del día</span>
+              </div>
+              <ul className="hd-list">
                 {dayEntries.slice(0, 6).map(e => (
-                  <li key={e.key} className="dash-day-row" onClick={() => goTo(e.type)}>
-                    <span className="dash-day-icon">{ICON[e.type]}</span>
-                    {e.time && <span className="dash-day-time">{e.time}</span>}
-                    <span className="dash-day-label">{e.label}</span>
+                  <li key={e.key} className="hd-entry" onClick={() => goTo(e.type)}>
+                    <span className="hd-entry-ico">{ICON[e.type]}</span>
+                    {e.time && <span className="hd-entry-time">{e.time}</span>}
+                    <span className="hd-entry-label">{e.label}</span>
                     {e.type === 'habit' && (
                       <button
                         type="button"
-                        className="dash-task-check"
+                        className="hd-check"
                         onClick={(ev) => { ev.stopPropagation(); onToggleHabit(e.habitId); }}
                         aria-label="Marcar hábito de hoy"
                       >
@@ -629,41 +641,52 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
-        </>
+            </div>
+          )}
+        </section>
       )}
 
       {pendingPredictions > 0 && (
-        <div className="dash-section">
-          <div className="dash-section-head">
-            <span className="section-label">🔮 Predicciones</span>
-            <button type="button" className="dash-link" onClick={() => onNavigate('futbol')}>
-              {pendingPredictions} pendiente{pendingPredictions === 1 ? '' : 's'} ›
-            </button>
-          </div>
-        </div>
+        <button type="button" className="hd-pred" onClick={() => onNavigate('futbol')}>
+          <span className="hd-pred-ico">🔮</span>
+          <span className="hd-pred-text">
+            <span className="hd-pred-title">Predicciones</span>
+            <span className="hd-pred-sub">{pendingPredictions} pendiente{pendingPredictions === 1 ? '' : 's'}</span>
+          </span>
+          <span className="hd-pred-go">›</span>
+        </button>
       )}
 
-      <div className="dash-section">
-        <span className="section-label">Accesos rápidos</span>
+      <div className="hd-quick-wrap">
+        <span className="hd-section-label">Accesos rápidos</span>
         <div className="quick-row">
           <button type="button" className="quick-chip" onClick={() => onNavigate('futbol')}>
-            ⚽ {futbolConfigured ? `${footballMatches.length} hoy` : 'Fútbol'}
+            <span className="quick-ico">⚽</span>
+            <span className="quick-label">{futbolConfigured ? `${footballMatches.length} hoy` : 'Fútbol'}</span>
           </button>
           <button type="button" className="quick-chip" onClick={() => onNavigate('compra')}>
-            🛒 {compra.length === 0 ? 'Compra' : `${compra.length}`}
+            <span className="quick-ico">🛒</span>
+            <span className="quick-label">{compra.length === 0 ? 'Compra' : `${compra.length}`}</span>
           </button>
-          <button type="button" className="quick-chip" onClick={() => onNavigate('capsula')}>⏳ Cápsula</button>
-          <button type="button" className="quick-chip" onClick={() => onNavigate('notas')}>📝 Notas</button>
-          <button type="button" className="quick-chip" onClick={() => onNavigate('datos')}>📊 Datos</button>
-          <button type="button" className="quick-chip" onClick={() => onNavigate('juego')}>🎮 Jugar</button>
+          <button type="button" className="quick-chip" onClick={() => onNavigate('capsula')}>
+            <span className="quick-ico">⏳</span>
+            <span className="quick-label">Cápsula</span>
+          </button>
+          <button type="button" className="quick-chip" onClick={() => onNavigate('notas')}>
+            <span className="quick-ico">📝</span>
+            <span className="quick-label">Notas</span>
+          </button>
+          <button type="button" className="quick-chip" onClick={() => onNavigate('datos')}>
+            <span className="quick-ico">📊</span>
+            <span className="quick-label">Datos</span>
+          </button>
+          <button type="button" className="quick-chip" onClick={() => onNavigate('juego')}>
+            <span className="quick-ico">🎮</span>
+            <span className="quick-label">Jugar</span>
+          </button>
           <button type="button" className="quick-chip" onClick={() => onNavigate('tiempo')}>
-            {weatherStatus === 'error'
-              ? '🌤️ Error'
-              : weatherData
-              ? `${weatherIcon(weatherData.current.weather_code)} ${Math.round(weatherData.current.temperature_2m)}°`
-              : '🌤️ Tiempo'}
+            <span className="quick-ico">{weatherChip.icon}</span>
+            <span className="quick-label">{weatherChip.label}</span>
           </button>
         </div>
       </div>
