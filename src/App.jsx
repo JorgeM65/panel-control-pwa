@@ -13,6 +13,7 @@ import { getItem, setItem } from './storage/storage';
 import { useWeather } from './hooks/useWeather';
 import { useFootball } from './hooks/useFootball';
 import { Notificaciones } from './utils/notifications';
+import { getMatchesWithoutPrediction } from './utils/predictions';
 import { CompraTab } from './modules/compra/CompraTab';
 import { JuegoTab } from './modules/juego/JuegoTab';
 import { NotasTab } from './modules/notas/NotasTab';
@@ -525,7 +526,12 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
   const todayFechas = (fechas || []).filter(f => nextOccurrence(f.fecha) === todayKey);
 
   const futbolConfigured = footballConfig.leagues.length > 0 || footballConfig.teams.length > 0;
-  const pendingPredictions = predicciones.filter(p => !p.resolved).length;
+  // Predicciones: dos situaciones distintas que NO se mezclan en un mismo contador.
+  //  - unpredictedMatches: partidos de hoy en los que todavía puedo predecir (misma
+  //    función que usa PrediccionesTab, así ambos coinciden siempre).
+  //  - predictionsToResolve: predicciones ya hechas cuyo resultado aún no se resolvió.
+  const unpredictedMatches = getMatchesWithoutPrediction(footballMatches, predicciones).length;
+  const predictionsToResolve = predicciones.filter(p => p.resolved !== true).length;
 
   const ICON = { event: '📅', match: '⚽', capsule: '⏳', habit: '🔥', fecha: '🎂' };
   const dayEntries = [];
@@ -646,16 +652,46 @@ function Home({ tasks, events, habits, compra, capsulas, footballMatches, footba
         </section>
       )}
 
-      {pendingPredictions > 0 && (
+      {unpredictedMatches > 0 || predictionsToResolve > 0 ? (
         <button type="button" className="hd-pred" onClick={() => onNavigate('futbol')}>
-          <span className="hd-pred-ico">🔮</span>
-          <span className="hd-pred-text">
-            <span className="hd-pred-title">Predicciones</span>
-            <span className="hd-pred-sub">{pendingPredictions} pendiente{pendingPredictions === 1 ? '' : 's'}</span>
+          <span className="hd-pred-head">
+            <span className="hd-pred-ico">🔮</span>
+            <span className="hd-pred-text"><span className="hd-pred-title">Predicciones</span></span>
+            <span className="hd-pred-go">›</span>
           </span>
-          <span className="hd-pred-go">›</span>
+          <span className="hd-pred-rows">
+            {unpredictedMatches > 0 && (
+              <span className="hd-pred-row">
+                {predictionsToResolve > 0 && <span className="hd-pred-tag">Hoy</span>}
+                <span className="hd-pred-line">
+                  <span className="hd-pred-rico">⚽</span>
+                  <span><strong>{unpredictedMatches}</strong> partido{unpredictedMatches === 1 ? '' : 's'} sin predecir</span>
+                </span>
+              </span>
+            )}
+            {predictionsToResolve > 0 && (
+              <span className="hd-pred-row">
+                {unpredictedMatches > 0 && <span className="hd-pred-tag">Pendientes</span>}
+                <span className="hd-pred-line">
+                  <span className="hd-pred-rico">⏳</span>
+                  <span><strong>{predictionsToResolve}</strong> por resolver</span>
+                </span>
+              </span>
+            )}
+          </span>
         </button>
-      )}
+      ) : predicciones.length > 0 ? (
+        <button type="button" className="hd-pred hd-pred--quiet" onClick={() => onNavigate('futbol')}>
+          <span className="hd-pred-head">
+            <span className="hd-pred-ico">🔮</span>
+            <span className="hd-pred-text">
+              <span className="hd-pred-title">Predicciones</span>
+              <span className="hd-pred-sub">{predicciones.length} resuelta{predicciones.length === 1 ? '' : 's'}</span>
+            </span>
+            <span className="hd-pred-go">›</span>
+          </span>
+        </button>
+      ) : null}
 
       <div className="hd-quick-wrap">
         <span className="hd-section-label">Accesos rápidos</span>
