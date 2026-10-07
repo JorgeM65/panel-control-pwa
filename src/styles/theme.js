@@ -197,14 +197,15 @@ html, body {
 }
 .hd-calm-text { font-size: 13.5px; color: var(--text); }
 
-/* ---- Predicciones pendientes (solo si existen) ---- */
+/* ---- Predicciones: qué puedo hacer hoy / qué estoy esperando que se resuelva ---- */
 .hd-pred {
-  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 14px;
+  display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 14px;
   background: linear-gradient(135deg, rgba(156, 147, 232, 0.16), transparent 75%), var(--item-bg);
   border: 1px solid rgba(156, 147, 232, 0.35); color: var(--text); text-align: left; cursor: pointer;
   transition: transform 0.12s ease, border-color 0.12s ease; -webkit-tap-highlight-color: transparent;
 }
 .hd-pred:active { transform: scale(0.985); border-color: var(--violet); }
+.hd-pred-head { display: flex; align-items: center; gap: 12px; }
 .hd-pred-ico {
   width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; font-size: 18px; background: rgba(156, 147, 232, 0.18);
@@ -213,6 +214,17 @@ html, body {
 .hd-pred-title { font-family: var(--font-display); font-size: 14px; font-weight: 600; }
 .hd-pred-sub { font-family: var(--font-mono); font-size: 11px; color: var(--violet); }
 .hd-pred-go { font-size: 22px; line-height: 1; color: var(--violet); }
+.hd-pred-rows { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px dashed rgba(156, 147, 232, 0.28); }
+.hd-pred-row { display: flex; flex-direction: column; gap: 4px; }
+.hd-pred-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-dim); }
+.hd-pred-line { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text); }
+.hd-pred-rico { font-size: 15px; flex-shrink: 0; }
+.hd-pred-line strong { font-family: var(--font-display); font-weight: 700; color: var(--violet); }
+/* Versión compacta y apagada: solo hay predicciones ya resueltas, nada que hacer */
+.hd-pred--quiet { padding: 10px 14px; background: var(--item-bg); border-color: var(--border); }
+.hd-pred--quiet .hd-pred-ico { width: 30px; height: 30px; font-size: 15px; background: rgba(156, 147, 232, 0.12); }
+.hd-pred--quiet .hd-pred-sub { color: var(--text-dim); }
+.hd-pred--quiet .hd-pred-go { color: var(--text-dim); }
 
 /* ---- Accesos rápidos: cuadrícula compacta de 4 columnas (los 7 siempre visibles) ---- */
 .hd-quick-wrap { display: flex; flex-direction: column; gap: 8px; }
