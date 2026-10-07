@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { uid, dateKey } from '../../utils/dates';
 import { usePredictions } from '../../hooks/usePredictions';
+import { getMatchesWithoutPrediction } from '../../utils/predictions';
 
 // Sigue viviendo aquí a propósito (punto 10 del criterio de hooks): es lógica
 // de negocio pura, no comunicación HTTP ni ciclo de vida React. El hook la
@@ -17,10 +18,7 @@ export function PrediccionesTab({ predicciones, footballMatches, onChange, onDel
   const { resolving } = usePredictions(predicciones, onChange, refreshSignal, calcPredictionPoints);
 
   const todayKey = dateKey(new Date());
-  const predictedIds = new Set(predicciones.map(p => p.matchId));
-  const todayMatches = footballMatches.filter(
-    m => !predictedIds.has(m.id) && (m.homeScore === null || m.homeScore === '')
-  );
+  const todayMatches = getMatchesWithoutPrediction(footballMatches, predicciones);
 
   function setDraft(matchId, field, value) {
     setDrafts(d => ({ ...d, [matchId]: { ...d[matchId], [field]: value.replace(/\D/g, '') } }));
